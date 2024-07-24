@@ -26,24 +26,37 @@
 
 ;;; Code:
 
+;; TODO: eliminate extra quote here for mode and also
+;; use a non-nil action in the sample invocation
 (defun lithium--define-key (keyspec keymap mode)
   "Helper to define an individual key according to spec.
+
+Sample invocation:
+ (lithium--define-key (list \"a\" nil t)
+                      some-mode-map
+                      ''some-mode)
 
 Parse the KEYSPEC to define the key in KEYMAP for MODE.
 
 KEYSPEC is expected to be (key action [exit]). If `exit' is missing,
 then it's an ordinary binding of key to action, but if exit is present
 and set to true, then also exit the MODE after performing the action."
-  (if (and (> (length keyspec) 2) (caddr keyspec))
+  (let ((key (car keyspec))
+        (action (or (cadr keyspec)
+                    (lambda ()
+                      (interactive))))
+        (exit (and (> (length keyspec) 2)
+                   (caddr keyspec))))
+    (if exit
+        (define-key keymap
+          (kbd key)
+          `(lambda ()
+             (interactive)
+             (funcall ',action)
+             (funcall ,mode -1)))
       (define-key keymap
-        (kbd (car keyspec))
-        `(lambda ()
-           (interactive)
-           (funcall ',(cadr keyspec))
-           (funcall ,mode -1)))
-    (define-key keymap
-      (kbd (car keyspec))
-      (cadr keyspec))))
+        (kbd key)
+        action))))
 
 (defmacro lithium-keymap (spec mode)
   "Specify a keymap for the MODE.
