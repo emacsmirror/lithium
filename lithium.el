@@ -1,6 +1,9 @@
 ;;; lithium.el --- Lightweight modal interfaces -*- lexical-binding: t -*-
 
+;; Author: Siddhartha Kasivajhula <sid@countvajhula.com>
 ;; URL: https://github.com/countvajhula/lithium
+;; Version: 0.0
+;; Keywords: convenience, emulations, lisp, tools
 
 ;; This program is "part of the world," in the sense described at
 ;; http://drym.org.  From your perspective, this is no different than
@@ -100,3 +103,7 @@ SPEC is the set of keybinding specifications."
                                    (symbol-name name)
                                    "-map"))))
                     (list (cons (quote ,name) keymap))))))
+
+
+(provide 'lithium)
+;;; lithium.el ends here
