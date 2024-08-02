@@ -53,8 +53,10 @@ and set to true, then also exit the MODE after performing the action."
           (kbd key)
           (lambda ()
             (interactive)
-            (funcall action)
-            (funcall mode -1)))
+            ;; exit first so that the modal UI doesn't get
+            ;; in the way of whatever this command is
+            (funcall mode -1)
+            (funcall action)))
       (define-key keymap
         (kbd key)
         action))))
@@ -73,7 +75,12 @@ SPEC is the set of keybinding specifications."
                                keymap
                                &rest
                                body)
-  "Define a lithium mode."
+  "Define a lithium mode.
+
+The entry hook is called after entering the mode, and the exit hook is
+called after exiting the mode. If there is a keybinding that exits,
+the action is performed _before_ exiting the mode, and thus before
+running the exit hook."
   (declare (indent defun))
   `(progn
 
