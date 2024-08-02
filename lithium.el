@@ -102,14 +102,7 @@ running the exit hook."
          (run-hooks
           (quote ,(intern
                    (concat (symbol-name name)
-                           "-exit-hook"))))))
-
-     (add-to-list 'emulation-mode-map-alists
-                  (let ((keymap ,(intern
-                                  (concat
-                                   (symbol-name name)
-                                   "-map"))))
-                    (list (cons (quote ,name) keymap))))))
+                           "-exit-hook"))))))))
 
 
 (provide 'lithium)
