@@ -63,7 +63,7 @@ and set to true, then also exit the MODE after performing the action."
                       "-pre-exit-hook")))
             (funcall mode -1)
             ;; do the action
-            (funcall action)
+            (call-interactively action)
             ;; run post-exit hook "intrinsically"
             (run-hooks
              (intern
