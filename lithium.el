@@ -29,6 +29,8 @@
 
 ;;; Code:
 
+;; TODO: should we define a mode struct that is passed around internally,
+;; instead of interning global symbol names to discover hooks?
 (defun lithium--define-key (keyspec keymap mode)
   "Helper to define an individual key according to spec.
 
@@ -55,8 +57,18 @@ and set to true, then also exit the MODE after performing the action."
             (interactive)
             ;; exit first so that the modal UI doesn't get
             ;; in the way of whatever this command is
+            (run-hooks
+             (intern
+              (concat (symbol-name mode)
+                      "-pre-exit-hook")))
             (funcall mode -1)
-            (funcall action)))
+            ;; do the action
+            (funcall action)
+            ;; run post-exit hook "intrinsically"
+            (run-hooks
+             (intern
+              (concat (symbol-name mode)
+                      "-post-exit-hook")))))
       (define-key keymap
         (kbd key)
         action))))
@@ -80,13 +92,24 @@ SPEC is the set of keybinding specifications."
 The entry hook is called after entering the mode, and the exit hook is
 called after exiting the mode. If there is a keybinding that exits,
 the action is performed _before_ exiting the mode, and thus before
-running the exit hook."
+running the exit hook.
+
+A mode may be exited intrinsically or extrinsically. We consider a
+command defined as \"exiting\" to result in an intrinsic exit, and an
+external interrup to exit the mode is considered extrinsic. For
+intrinsic exits, the lithium implementation is responsible for calling
+the post-exit hook. For extrinsic exits, the external agency is
+responsible for doing it."
   (declare (indent defun))
   `(progn
 
-     (defvar ,(intern (concat (symbol-name name) "-entry-hook")) nil
+     (defvar ,(intern (concat (symbol-name name) "-pre-entry-hook")) nil
        ,(concat "Entry hook for" (symbol-name name) "."))
-     (defvar ,(intern (concat (symbol-name name) "-exit-hook")) nil
+     (defvar ,(intern (concat (symbol-name name) "-post-entry-hook")) nil
+       ,(concat "Entry hook for" (symbol-name name) "."))
+     (defvar ,(intern (concat (symbol-name name) "-pre-exit-hook")) nil
+       ,(concat "Exit hook for" (symbol-name name) "."))
+     (defvar ,(intern (concat (symbol-name name) "-post-exit-hook")) nil
        ,(concat "Exit hook for" (symbol-name name) "."))
 
      (define-minor-mode ,name
@@ -94,15 +117,11 @@ running the exit hook."
        :global t
        :keymap (lithium-keymap ,keymap ',name)
        ,@body
-       (if ,name
-           (run-hooks
-            (quote ,(intern
-                     (concat (symbol-name name)
-                             "-entry-hook"))))
+       (when ,name
          (run-hooks
           (quote ,(intern
                    (concat (symbol-name name)
-                           "-exit-hook")))))
+                           "-post-entry-hook")))))
 
        (add-to-list 'emulation-mode-map-alists
                     (let ((keymap ,(intern
@@ -110,6 +129,29 @@ running the exit hook."
                                      (symbol-name name)
                                      "-map"))))
                       (list (cons (quote ,name) keymap)))))))
+
+(defun lithium-exit-mode (name)
+  "Exit mode NAME."
+  (run-hooks
+   (intern
+    (concat (symbol-name name)
+            "-pre-exit-hook")))
+  (funcall
+   (intern (symbol-name name))
+   -1)
+  (run-hooks
+   (intern
+    (concat (symbol-name name)
+            "-post-exit-hook"))))
+
+(defun lithium-enter-mode (name)
+  "Enter mode NAME."
+  (run-hooks
+   (intern
+    (concat (symbol-name name)
+            "-pre-entry-hook")))
+  (funcall
+   (intern (symbol-name name))))
 
 
 (provide 'lithium)
