@@ -57,6 +57,9 @@ and set to true, then also exit the MODE after performing the action."
             (interactive)
             ;; exit first so that the modal UI doesn't get
             ;; in the way of whatever this command is
+            ;; TODO: now that modes are "globalized" and explicitly
+            ;; disabled in the minibuffer, can we just exit after
+            ;; running the command?
             (run-hooks
              (intern
               (concat (symbol-name mode)
@@ -114,7 +117,6 @@ responsible for doing it."
 
      (define-minor-mode ,name
        ,docstring
-       :global t
        :keymap (lithium-keymap ,keymap ',name)
        ,@body
        (when ,name
@@ -128,7 +130,12 @@ responsible for doing it."
                                     (concat
                                      (symbol-name name)
                                      "-map"))))
-                      (list (cons (quote ,name) keymap)))))))
+                      (list (cons (quote ,name) keymap)))))
+
+     (define-globalized-minor-mode ,(intern (concat "global-" (symbol-name name))) ,name
+       (lambda ()
+         (unless (minibufferp)
+           (,name 1))))))
 
 (defun lithium-exit-mode (name)
   "Exit mode NAME."
