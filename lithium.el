@@ -110,14 +110,7 @@ responsible for doing it."
      (define-minor-mode ,local-name
        ,docstring
        :keymap (lithium-keymap ,keymap-spec ',name)
-       ,@body)
-
-     (add-to-list 'emulation-mode-map-alists
-                    (let ((keymap ,(intern
-                                    (concat
-                                     (symbol-name local-name)
-                                     "-map"))))
-                      (list (cons (quote ,local-name) keymap))))))
+       ,@body)))
 
 (defmacro lithium-define-global-mode (name
                                       docstring
