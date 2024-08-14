@@ -110,7 +110,37 @@ responsible for doing it."
      (define-minor-mode ,local-name
        ,docstring
        :keymap (lithium-keymap ,keymap-spec ',name)
-       ,@body)))
+       ,@body)
+
+     ;; Based on: https://stackoverflow.com/a/5340797
+     (defun ,(intern (concat "lithium-promote-"
+                             (symbol-name local-name)
+                             "-keymap"))
+         (_file)
+       "Ensure that these keybindings take precedence over other minor modes.
+
+This may still be overridden by other minor mode keymaps that employ
+the same approach, if their functions are run after this one, but this
+should be rare.
+
+Called via the `after-load-functions' special hook."
+       (unless (eq (caar minor-mode-map-alist) ',local-name)
+         (let ((this-mode (assq ',local-name minor-mode-map-alist)))
+           (assq-delete-all ',local-name minor-mode-map-alist)
+           (add-to-list 'minor-mode-map-alist this-mode))))
+
+     ;; Minor mode keymaps take precedence based on their placement in
+     ;; `minor-mode-map-alist'. This placement corresponds to the order
+     ;; in which modules are loaded. So, to ensure that Lithium mode maps
+     ;; take precedence, re-promote them to the front of the alist
+     ;; after each module is loaded.
+     ;; Note that evil keybindings still somehow manage to take precedence,
+     ;; so if Evil is in use, Normal state should be deactivated via
+     ;; a post-entry hook. That seems outside the scope of Lithium, however.
+     (add-hook 'after-load-functions
+               ',(intern (concat "lithium-promote-"
+                                 (symbol-name local-name)
+                                 "-keymap")))))
 
 (defmacro lithium-define-global-mode (name
                                       docstring
