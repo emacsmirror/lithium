@@ -87,7 +87,8 @@ SPEC is the set of keybinding specifications."
 
 (defmacro lithium-define-mode (name
                                docstring
-                               keymap
+                               local-name
+                               keymap-spec
                                &rest
                                body)
   "Define a lithium mode.
@@ -106,36 +107,51 @@ responsible for doing it."
   (declare (indent defun))
   `(progn
 
-     (defvar ,(intern (concat (symbol-name name) "-pre-entry-hook")) nil
-       ,(concat "Entry hook for" (symbol-name name) "."))
-     (defvar ,(intern (concat (symbol-name name) "-post-entry-hook")) nil
-       ,(concat "Entry hook for" (symbol-name name) "."))
-     (defvar ,(intern (concat (symbol-name name) "-pre-exit-hook")) nil
-       ,(concat "Exit hook for" (symbol-name name) "."))
-     (defvar ,(intern (concat (symbol-name name) "-post-exit-hook")) nil
-       ,(concat "Exit hook for" (symbol-name name) "."))
-
-     (define-minor-mode ,name
+     (define-minor-mode ,local-name
        ,docstring
-       :keymap (lithium-keymap ,keymap ',name)
-       ,@body
+       :keymap (lithium-keymap ,keymap-spec ',name)
+       ,@body)
+
+     (add-to-list 'emulation-mode-map-alists
+                    (let ((keymap ,(intern
+                                    (concat
+                                     (symbol-name local-name)
+                                     "-map"))))
+                      (list (cons (quote ,local-name) keymap))))))
+
+(defmacro lithium-define-global-mode (name
+                                      docstring
+                                      keymap-spec
+                                      &rest
+                                      body)
+  "Define a global lithium mode."
+  (declare (indent defun))
+  `(progn
+
+     (defvar ,(intern (concat (symbol-name name) "-pre-entry-hook")) nil
+       ,(concat "Pre-entry hook for" (symbol-name name) "."))
+     (defvar ,(intern (concat (symbol-name name) "-post-entry-hook")) nil
+       ,(concat "Post-entry hook for" (symbol-name name) "."))
+     (defvar ,(intern (concat (symbol-name name) "-pre-exit-hook")) nil
+       ,(concat "Pre-exit hook for" (symbol-name name) "."))
+     (defvar ,(intern (concat (symbol-name name) "-post-exit-hook")) nil
+       ,(concat "Post-exit hook for" (symbol-name name) "."))
+
+     (lithium-define-mode ,name
+       ,docstring
+       ,(intern (concat "local-" (symbol-name name)))
+       ,keymap-spec
+       ,@body)
+
+     (define-globalized-minor-mode ,name ,(intern (concat "local-" (symbol-name name)))
+       (lambda ()
+         (unless (minibufferp)
+           (,(intern (concat "local-" (symbol-name name))) 1)))
        (when ,name
          (run-hooks
           (quote ,(intern
                    (concat (symbol-name name)
-                           "-post-entry-hook")))))
-
-       (add-to-list 'emulation-mode-map-alists
-                    (let ((keymap ,(intern
-                                    (concat
-                                     (symbol-name name)
-                                     "-map"))))
-                      (list (cons (quote ,name) keymap)))))
-
-     (define-globalized-minor-mode ,(intern (concat "global-" (symbol-name name))) ,name
-       (lambda ()
-         (unless (minibufferp)
-           (,name 1))))))
+                           "-post-entry-hook"))))))))
 
 (defun lithium-exit-mode (name)
   "Exit mode NAME."
