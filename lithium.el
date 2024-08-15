@@ -48,9 +48,15 @@ and set to true, then also exit the MODE after performing the action."
         (action (or (cadr keyspec)
                     (lambda ()
                       (interactive))))
-        (exit (and (> (length keyspec) 2)
-                   (caddr keyspec))))
-    (if exit
+        (should-exit (and (> (length keyspec) 2)
+                          (caddr keyspec)))
+        (pre-exit (intern
+                   (concat (symbol-name mode)
+                           "-pre-exit-hook")))
+        (post-exit (intern
+                    (concat (symbol-name mode)
+                            "-post-exit-hook"))))
+    (if should-exit
         (define-key keymap
           (kbd key)
           (lambda ()
@@ -60,10 +66,7 @@ and set to true, then also exit the MODE after performing the action."
             ;; TODO: now that modes are "globalized" and explicitly
             ;; disabled in the minibuffer, can we just exit after
             ;; running the command?
-            (run-hooks
-             (intern
-              (concat (symbol-name mode)
-                      "-pre-exit-hook")))
+            (run-hooks pre-exit)
             (funcall mode -1)
             ;; do the action
             (condition-case err
@@ -73,17 +76,11 @@ and set to true, then also exit the MODE after performing the action."
               ;; we still want to run post-exit hooks to ensure
               ;; that we leave things in a clean state
               ((quit error)
-               (progn (run-hooks
-                       (intern
-                        (concat (symbol-name mode)
-                                "-post-exit-hook")))
+               (progn (run-hooks post-exit)
                       ;; re-raise the interrupt
                       (signal (car err) (cdr err)))))
             ;; run post-exit hook "intrinsically"
-            (run-hooks
-             (intern
-              (concat (symbol-name mode)
-                      "-post-exit-hook")))))
+            (run-hooks post-exit)))
       (define-key keymap
         (kbd key)
         action))))
@@ -117,42 +114,41 @@ intrinsic exits, the lithium implementation is responsible for calling
 the post-exit hook. For extrinsic exits, the external agency is
 responsible for doing it."
   (declare (indent defun))
-  `(progn
+  (let ((promote-keymap (intern
+                         (concat "lithium-promote-"
+                                 (symbol-name local-name)
+                                 "-keymap"))))
+   `(progn
 
-     (define-minor-mode ,local-name
-       ,docstring
-       :keymap (lithium-keymap ,keymap-spec ',name)
-       ,@body)
+      (define-minor-mode ,local-name
+        ,docstring
+        :keymap (lithium-keymap ,keymap-spec ',name)
+        ,@body)
 
-     ;; Based on: https://stackoverflow.com/a/5340797
-     (defun ,(intern (concat "lithium-promote-"
-                             (symbol-name local-name)
-                             "-keymap"))
-         (_file)
-       "Ensure that these keybindings take precedence over other minor modes.
+      ;; Based on: https://stackoverflow.com/a/5340797
+      (defun ,promote-keymap (_file)
+        "Ensure that these keybindings take precedence over other minor modes.
 
 This may still be overridden by other minor mode keymaps that employ
 the same approach, if their functions are run after this one, but this
 should be rare.
 
 Called via the `after-load-functions' special hook."
-       (unless (eq (caar minor-mode-map-alist) ',local-name)
-         (let ((this-mode (assq ',local-name minor-mode-map-alist)))
-           (assq-delete-all ',local-name minor-mode-map-alist)
-           (add-to-list 'minor-mode-map-alist this-mode))))
+        (unless (eq (caar minor-mode-map-alist) ',local-name)
+          (let ((this-mode (assq ',local-name minor-mode-map-alist)))
+            (assq-delete-all ',local-name minor-mode-map-alist)
+            (add-to-list 'minor-mode-map-alist this-mode))))
 
-     ;; Minor mode keymaps take precedence based on their placement in
-     ;; `minor-mode-map-alist'. This placement corresponds to the order
-     ;; in which modules are loaded. So, to ensure that Lithium mode maps
-     ;; take precedence, re-promote them to the front of the alist
-     ;; after each module is loaded.
-     ;; Note that evil keybindings still somehow manage to take precedence,
-     ;; so if Evil is in use, Normal state should be deactivated via
-     ;; a post-entry hook. That seems outside the scope of Lithium, however.
-     (add-hook 'after-load-functions
-               ',(intern (concat "lithium-promote-"
-                                 (symbol-name local-name)
-                                 "-keymap")))))
+      ;; Minor mode keymaps take precedence based on their placement in
+      ;; `minor-mode-map-alist'. This placement corresponds to the order
+      ;; in which modules are loaded. So, to ensure that Lithium mode maps
+      ;; take precedence, re-promote them to the front of the alist
+      ;; after each module is loaded.
+      ;; Note that evil keybindings still somehow manage to take precedence,
+      ;; so if Evil is in use, Normal state should be deactivated via
+      ;; a post-entry hook. That seems outside the scope of Lithium, however.
+      (add-hook 'after-load-functions
+                ',promote-keymap))))
 
 (defmacro lithium-define-global-mode (name
                                       docstring
@@ -161,32 +157,35 @@ Called via the `after-load-functions' special hook."
                                       body)
   "Define a global lithium mode."
   (declare (indent defun))
-  `(progn
+  (let ((pre-entry (intern (concat (symbol-name name) "-pre-entry-hook")))
+        (post-entry (intern (concat (symbol-name name) "-post-entry-hook")))
+        (pre-exit (intern (concat (symbol-name name) "-pre-exit-hook")))
+        (post-exit (intern (concat (symbol-name name) "-post-exit-hook")))
+        (local-name (intern (concat "local-" (symbol-name name)))))
+    `(progn
 
-     (defvar ,(intern (concat (symbol-name name) "-pre-entry-hook")) nil
-       ,(concat "Pre-entry hook for" (symbol-name name) "."))
-     (defvar ,(intern (concat (symbol-name name) "-post-entry-hook")) nil
-       ,(concat "Post-entry hook for" (symbol-name name) "."))
-     (defvar ,(intern (concat (symbol-name name) "-pre-exit-hook")) nil
-       ,(concat "Pre-exit hook for" (symbol-name name) "."))
-     (defvar ,(intern (concat (symbol-name name) "-post-exit-hook")) nil
-       ,(concat "Post-exit hook for" (symbol-name name) "."))
+       (defvar ,pre-entry nil
+         ,(concat "Pre-entry hook for " (symbol-name name) "."))
+       (defvar ,post-entry nil
+         ,(concat "Post-entry hook for " (symbol-name name) "."))
+       (defvar ,pre-exit nil
+         ,(concat "Pre-exit hook for " (symbol-name name) "."))
+       (defvar ,post-exit nil
+         ,(concat "Post-exit hook for " (symbol-name name) "."))
 
-     (lithium-define-mode ,name
-       ,docstring
-       ,(intern (concat "local-" (symbol-name name)))
-       ,keymap-spec
-       ,@body)
+       (lithium-define-mode ,name
+         ,docstring
+         ,local-name
+         ,keymap-spec
+         ,@body)
 
-     (define-globalized-minor-mode ,name ,(intern (concat "local-" (symbol-name name)))
-       (lambda ()
-         (unless (minibufferp)
-           (,(intern (concat "local-" (symbol-name name))) 1)))
-       (when ,name
-         (run-hooks
-          (quote ,(intern
-                   (concat (symbol-name name)
-                           "-post-entry-hook"))))))))
+       (define-globalized-minor-mode ,name ,local-name
+         (lambda ()
+           (unless (minibufferp)
+             (,local-name 1)))
+         (when ,name
+           (run-hooks
+            (quote ,post-entry)))))))
 
 (defun lithium-exit-mode (name)
   "Exit mode NAME."
