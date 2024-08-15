@@ -68,10 +68,11 @@ and set to true, then also exit the MODE after performing the action."
             ;; do the action
             (condition-case err
                 (call-interactively action)
-              ;; if we interrupt execution, we still want
-              ;; to run post-exit hooks to ensure we
-              ;; leave things in a clean state
-              (quit
+              ;; if we interrupt execution via `C-g', or if the
+              ;; command encounters an error during execution,
+              ;; we still want to run post-exit hooks to ensure
+              ;; that we leave things in a clean state
+              ((quit error)
                (progn (run-hooks
                        (intern
                         (concat (symbol-name mode)
