@@ -66,7 +66,18 @@ and set to true, then also exit the MODE after performing the action."
                       "-pre-exit-hook")))
             (funcall mode -1)
             ;; do the action
-            (call-interactively action)
+            (condition-case err
+                (call-interactively action)
+              ;; if we interrupt execution, we still want
+              ;; to run post-exit hooks to ensure we
+              ;; leave things in a clean state
+              (quit
+               (progn (run-hooks
+                       (intern
+                        (concat (symbol-name mode)
+                                "-post-exit-hook")))
+                      ;; re-raise the interrupt
+                      (signal (car err) (cdr err)))))
             ;; run post-exit hook "intrinsically"
             (run-hooks
              (intern
