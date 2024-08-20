@@ -155,7 +155,13 @@ Called via the `after-load-functions' special hook."
                                       keymap-spec
                                       &rest
                                       body)
-  "Define a global lithium mode."
+  "Define a global lithium mode.
+
+This considers entry and exit to occur globally rather than in a
+buffer-specific way. That is, entering such a mode from any buffer
+enters the mode in all buffers, and any entry hooks are run just once
+at this time. Likewise, exiting while in any buffer exits the mode in
+all buffers, and the exit hooks are run just once."
   (declare (indent defun))
   (let ((pre-entry (intern (concat (symbol-name name) "-pre-entry-hook")))
         (post-entry (intern (concat (symbol-name name) "-post-entry-hook")))
@@ -185,7 +191,56 @@ Called via the `after-load-functions' special hook."
              (,local-name 1)))
          (when ,name
            (run-hooks
-            (quote ,post-entry)))))))
+            (quote ,post-entry))))
+
+       ;; mark this mode as a global mode
+       ;; for use in application-level predicates
+       (put ',name 'lithium-global t))))
+
+(defmacro lithium-define-local-mode (name
+                                     docstring
+                                     keymap-spec
+                                     &rest
+                                     body)
+  "Define a lithium mode that's local to a buffer."
+  (declare (indent defun))
+  (let ((pre-entry (intern (concat (symbol-name name) "-pre-entry-hook")))
+        (post-entry (intern (concat (symbol-name name) "-post-entry-hook")))
+        (pre-exit (intern (concat (symbol-name name) "-pre-exit-hook")))
+        (post-exit (intern (concat (symbol-name name) "-post-exit-hook")))
+        (local-name (intern (concat "local-" (symbol-name name)))))
+    `(progn
+
+       (defvar ,pre-entry nil
+         ,(concat "Pre-entry hook for " (symbol-name name) "."))
+       (defvar ,post-entry nil
+         ,(concat "Post-entry hook for " (symbol-name name) "."))
+       (defvar ,pre-exit nil
+         ,(concat "Pre-exit hook for " (symbol-name name) "."))
+       (defvar ,post-exit nil
+         ,(concat "Post-exit hook for " (symbol-name name) "."))
+
+       (lithium-define-mode ,name
+         ,docstring
+         ,name
+         ,keymap-spec
+         ,@body
+         (when ,name
+           (run-hooks
+            (quote ,post-entry))))
+
+       ;; mark this mode as a local mode - not technically needed
+       ;; since properties default to nil, but for good measure
+       (put ',name 'lithium-global nil))))
+
+(defun lithium-global-mode-p (mode)
+  "Is MODE a global mode?"
+  (get mode 'lithium-global))
+
+(defun lithium-local-mode-p (mode)
+  "Is MODE a local mode?"
+  (not
+   (lithium-global-mode-p mode)))
 
 (defun lithium-exit-mode (name)
   "Exit mode NAME."
