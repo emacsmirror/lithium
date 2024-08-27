@@ -114,15 +114,32 @@ intrinsic exits, the lithium implementation is responsible for calling
 the post-exit hook. For extrinsic exits, the external agency is
 responsible for doing it."
   (declare (indent defun))
-  (let ((promote-keymap (intern
-                         (concat "lithium-promote-"
-                                 (symbol-name local-name)
-                                 "-keymap"))))
+  (let* ((promote-keymap (intern
+                          (concat "lithium-promote-"
+                                  (symbol-name local-name)
+                                  "-keymap")))
+         (keymap (intern
+                   (concat
+                    (symbol-name local-name)
+                    "-map")))
+         (map-alist-name (intern
+                          (concat
+                           (symbol-name local-name)
+                           "-map-alist")))
+         (map-alist-value (list (cons local-name keymap))))
    `(progn
+
+      (setq ,map-alist-name ',map-alist-value)
 
       (define-minor-mode ,local-name
         ,docstring
         :keymap (lithium-keymap ,keymap-spec ',name)
+        (if ,local-name
+            (add-to-list 'emulation-mode-map-alists
+                         ',map-alist-name)
+          (setq emulation-mode-map-alists
+                (remove ',map-alist-name
+                        emulation-mode-map-alists)))
         ,@body)
 
       ;; Based on: https://stackoverflow.com/a/5340797
