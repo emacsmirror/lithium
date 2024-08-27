@@ -94,6 +94,20 @@ SPEC is the set of keybinding specifications."
        (lithium--define-key keyspec keymap ,mode))
      keymap))
 
+(defun lithium--push-overriding-map (keymap)
+  "Make the KEYMAP take precedence over all other keymaps.
+
+This uses the internal `internal-push-keymap' utility, used by Hydra,
+Transient, and also by Emacs's built-in `set-transient-map'."
+  (internal-push-keymap keymap 'overriding-terminal-local-map))
+
+(defun lithium--pop-overriding-map (keymap)
+  "Remove the precedence of KEYMAP over all other keymaps.
+
+This uses the internal `internal-pop-keymap' utility, used by Hydra,
+Transient, and also by Emacs's built-in `set-transient-map'."
+  (internal-pop-keymap keymap 'overriding-terminal-local-map))
+
 (defmacro lithium-define-mode (name
                                docstring
                                local-name
@@ -119,53 +133,22 @@ responsible for doing it."
                                   (symbol-name local-name)
                                   "-keymap")))
          (keymap (intern
-                   (concat
-                    (symbol-name local-name)
-                    "-map")))
-         (map-alist-name (intern
-                          (concat
-                           (symbol-name local-name)
-                           "-map-alist")))
-         (map-alist-value (list (cons local-name keymap))))
+                  (concat
+                   (symbol-name local-name)
+                   "-map"))))
    `(progn
-
-      (setq ,map-alist-name ',map-alist-value)
 
       (define-minor-mode ,local-name
         ,docstring
         :keymap (lithium-keymap ,keymap-spec ',name)
+        ;; TODO: consider making local modes promote to overriding-local-map
+        ;; and global modes, to overriding-terminal-local-map, so that
+        ;; local modes can remain enabled while global modes are enabled
+        ;; and so that the latter will take precedence.
         (if ,local-name
-            (add-to-list 'emulation-mode-map-alists
-                         ',map-alist-name)
-          (setq emulation-mode-map-alists
-                (remove ',map-alist-name
-                        emulation-mode-map-alists)))
-        ,@body)
-
-      ;; Based on: https://stackoverflow.com/a/5340797
-      (defun ,promote-keymap (_file)
-        "Ensure that these keybindings take precedence over other minor modes.
-
-This may still be overridden by other minor mode keymaps that employ
-the same approach, if their functions are run after this one, but this
-should be rare.
-
-Called via the `after-load-functions' special hook."
-        (unless (eq (caar minor-mode-map-alist) ',local-name)
-          (let ((this-mode (assq ',local-name minor-mode-map-alist)))
-            (assq-delete-all ',local-name minor-mode-map-alist)
-            (add-to-list 'minor-mode-map-alist this-mode))))
-
-      ;; Minor mode keymaps take precedence based on their placement in
-      ;; `minor-mode-map-alist'. This placement corresponds to the order
-      ;; in which modules are loaded. So, to ensure that Lithium mode maps
-      ;; take precedence, re-promote them to the front of the alist
-      ;; after each module is loaded.
-      ;; Note that evil keybindings still somehow manage to take precedence,
-      ;; so if Evil is in use, Normal state should be deactivated via
-      ;; a post-entry hook. That seems outside the scope of Lithium, however.
-      (add-hook 'after-load-functions
-                ',promote-keymap))))
+            (lithium--push-overriding-map ,keymap)
+          (lithium--pop-overriding-map ,keymap))
+        ,@body))))
 
 (defmacro lithium-define-global-mode (name
                                       docstring
