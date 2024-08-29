@@ -163,7 +163,10 @@ all buffers, and the exit hooks are run just once."
         (post-entry (intern (concat (symbol-name name) "-post-entry-hook")))
         (pre-exit (intern (concat (symbol-name name) "-pre-exit-hook")))
         (post-exit (intern (concat (symbol-name name) "-post-exit-hook")))
-        (local-name (intern (concat "local-" (symbol-name name)))))
+        (local-name (intern (concat "local-" (symbol-name name))))
+        (disable-mode (intern
+                       (concat "lithium-disable-"
+                               (symbol-name name)))))
     `(progn
 
        (defvar ,pre-entry nil
@@ -188,6 +191,13 @@ all buffers, and the exit hooks are run just once."
          (when ,name
            (run-hooks
             (quote ,post-entry))))
+
+       (defun ,disable-mode ()
+         "Disable this mode."
+         (lithium-exit-mode ',name))
+
+       (add-hook 'minibuffer-setup-hook
+                 #',disable-mode)
 
        ;; mark this mode as a global mode
        ;; for use in application-level predicates
