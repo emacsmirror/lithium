@@ -242,8 +242,7 @@ all buffers, and the exit hooks are run just once."
   (let ((pre-entry (intern (concat (symbol-name name) "-pre-entry-hook")))
         (post-entry (intern (concat (symbol-name name) "-post-entry-hook")))
         (pre-exit (intern (concat (symbol-name name) "-pre-exit-hook")))
-        (post-exit (intern (concat (symbol-name name) "-post-exit-hook")))
-        (local-name (intern (concat "local-" (symbol-name name)))))
+        (post-exit (intern (concat (symbol-name name) "-post-exit-hook"))))
     `(progn
 
        (defvar ,pre-entry nil
