@@ -244,26 +244,28 @@ all buffers, and the exit hooks are run just once."
 
 (defun lithium-exit-mode (name)
   "Exit mode NAME."
-  (run-hooks
-   (intern
-    (concat (symbol-name name)
-            "-pre-exit-hook")))
-  (funcall
-   (intern (symbol-name name))
-   -1)
-  (run-hooks
-   (intern
-    (concat (symbol-name name)
-            "-post-exit-hook"))))
+  (when (eval name)
+    (run-hooks
+     (intern
+      (concat (symbol-name name)
+              "-pre-exit-hook")))
+    (funcall
+     (intern (symbol-name name))
+     -1)
+    (run-hooks
+     (intern
+      (concat (symbol-name name)
+              "-post-exit-hook")))))
 
 (defun lithium-enter-mode (name)
   "Enter mode NAME."
-  (run-hooks
-   (intern
-    (concat (symbol-name name)
-            "-pre-entry-hook")))
-  (funcall
-   (intern (symbol-name name))))
+  (unless (eval name)
+    (run-hooks
+     (intern
+      (concat (symbol-name name)
+              "-pre-entry-hook")))
+    (funcall
+     (intern (symbol-name name)))))
 
 
 (provide 'lithium)
