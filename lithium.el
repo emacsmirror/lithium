@@ -29,6 +29,15 @@
 
 ;;; Code:
 
+(defvar lithium-overriding-map nil
+  "The overriding terminal local map currently in effect.
+
+There can be only one, and it's put in place upon lithium mode entry.
+As there are cases where minor mode controls are not in effect, and
+terminal local is a global concern, we need to keep track of this
+overriding map globally so that it can be suspended, if need be,
+outside the jurisdiction of the minor mode.")
+
 ;; TODO: should we define a mode struct that is passed around internally,
 ;; instead of interning global symbol names to discover hooks?
 (defun lithium--define-key (keyspec keymap mode)
@@ -108,6 +117,27 @@ This uses the internal `internal-pop-keymap' utility, used by Hydra,
 Transient, and also by Emacs's built-in `set-transient-map'."
   (internal-pop-keymap keymap 'overriding-terminal-local-map))
 
+(defun lithium-suspend-overriding-map ()
+  "Suspend the current overriding terminal local map.
+
+Typically, lithium mode keymaps are enabled and disabled by the minor
+mode that defines these maps. But the ordinary keymap priority of
+minor modes is not sufficient for our purposes, and we need to also
+promote these keymaps to overriding terminal local upon minor mode
+entry. Yet, since keymap lookup consults these maps prior to any logic
+related to minor modes, it also means that this map now takes
+precedence even in cases where the minor mode is not active. In such
+cases, we need to explicitly suspend the keymap from terminal local,
+and reinstate it upon re-entering a context where the usual minor mode
+controls are sufficient."
+  (when lithium-overriding-map
+    (lithium--pop-overriding-map lithium-overriding-map)))
+
+(defun lithium-reinstate-overriding-map ()
+  "Reinstate a suspended overriding terminal local map."
+  (when lithium-overriding-map
+    (lithium--push-overriding-map lithium-overriding-map)))
+
 (defmacro lithium-define-mode (name
                                docstring
                                local-name
@@ -142,8 +172,17 @@ responsible for doing it."
         ;; local modes can remain enabled while global modes are enabled
         ;; and so that the latter will take precedence.
         (if ,local-name
-            (lithium--push-overriding-map ,keymap)
-          (lithium--pop-overriding-map ,keymap))
+            (if lithium-overriding-map
+                (message "WARNING: %s is already an overriding map!"
+                         lithium-overriding-map)
+              ;; (error "%s is already an overriding map!"
+              ;;        lithium-overriding-map)
+              (lithium--push-overriding-map ,keymap)
+              ;; register this mode's keymap as having been promoted to terminal local
+              (setq lithium-overriding-map ,keymap))
+          (lithium--pop-overriding-map ,keymap)
+          ;; unregister this as a promoted overriding map
+          (setq lithium-overriding-map nil))
         ,@body))))
 
 (defmacro lithium-define-global-mode (name
@@ -163,10 +202,7 @@ all buffers, and the exit hooks are run just once."
         (post-entry (intern (concat (symbol-name name) "-post-entry-hook")))
         (pre-exit (intern (concat (symbol-name name) "-pre-exit-hook")))
         (post-exit (intern (concat (symbol-name name) "-post-exit-hook")))
-        (local-name (intern (concat "local-" (symbol-name name))))
-        (disable-mode (intern
-                       (concat "lithium-disable-"
-                               (symbol-name name)))))
+        (local-name (intern (concat "local-" (symbol-name name)))))
     `(progn
 
        (defvar ,pre-entry nil
@@ -191,13 +227,6 @@ all buffers, and the exit hooks are run just once."
          (when ,name
            (run-hooks
             (quote ,post-entry))))
-
-       (defun ,disable-mode ()
-         "Disable this mode."
-         (lithium-exit-mode ',name))
-
-       (add-hook 'minibuffer-setup-hook
-                 #',disable-mode)
 
        ;; mark this mode as a global mode
        ;; for use in application-level predicates
@@ -273,6 +302,19 @@ all buffers, and the exit hooks are run just once."
     (funcall
      (intern (symbol-name name)))))
 
+(defun lithium-initialize ()
+  "Initialize any global state necessary for Lithium mode operation."
+  (add-hook 'minibuffer-setup-hook
+            #'lithium-suspend-overriding-map)
+  (add-hook 'minibuffer-exit-hook
+            #'lithium-reinstate-overriding-map))
+
+(defun lithium-disable ()
+  "Remove any global state defined by Lithium."
+  (remove-hook 'minibuffer-setup-hook
+               #'lithium-suspend-overriding-map)
+  (remove-hook 'minibuffer-exit-hook
+               #'lithium-reinstate-overriding-map))
 
 (provide 'lithium)
 ;;; lithium.el ends here
