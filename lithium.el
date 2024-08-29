@@ -128,11 +128,7 @@ intrinsic exits, the lithium implementation is responsible for calling
 the post-exit hook. For extrinsic exits, the external agency is
 responsible for doing it."
   (declare (indent defun))
-  (let* ((promote-keymap (intern
-                          (concat "lithium-promote-"
-                                  (symbol-name local-name)
-                                  "-keymap")))
-         (keymap (intern
+  (let* ((keymap (intern
                   (concat
                    (symbol-name local-name)
                    "-map"))))
