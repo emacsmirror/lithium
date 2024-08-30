@@ -268,6 +268,8 @@ all buffers, and the exit hooks are run just once."
          ,name
          ,keymap-spec
          ,@body
+         ;; TODO: this symex is identical to the one in global
+         ;; use a macro of some kind? `lithium-mode-toggle-syntax'
          (if ,name
              (progn
                (when lithium-overriding-map
