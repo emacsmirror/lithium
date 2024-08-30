@@ -334,5 +334,21 @@ all buffers, and the exit hooks are run just once."
   (remove-hook 'minibuffer-exit-hook
                #'lithium-reinstate-overriding-map))
 
+(define-minor-mode lithium-mode
+  "Minor mode for managing necessary global state for Lithium modes.
+
+The only purpose for this for the moment is to register hooks that
+enable and disable overriding keymaps for lithium modes in certain
+cases, such as entry into the minibuffer.
+
+There are no keybindings associated with this minor mode -- it is not
+itself a \"lithium mode\"."
+  :lighter " lithium"
+  :global t
+  :group 'lithium
+  (if lithium-mode
+      (lithium-initialize)
+    (lithium-disable)))
+
 (provide 'lithium)
 ;;; lithium.el ends here
