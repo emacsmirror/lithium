@@ -158,20 +158,16 @@ intrinsic exits, the lithium implementation is responsible for calling
 the post-exit hook. For extrinsic exits, the external agency is
 responsible for doing it."
   (declare (indent defun))
-  (let* ((keymap (intern
-                  (concat
-                   (symbol-name local-name)
-                   "-map"))))
-   `(progn
+  `(progn
 
-      (define-minor-mode ,local-name
-        ,docstring
-        :keymap (lithium-keymap ,keymap-spec ',name)
-        ;; TODO: consider making local modes promote to overriding-local-map
-        ;; and global modes, to overriding-terminal-local-map, so that
-        ;; local modes can remain enabled while global modes are enabled
-        ;; and so that the latter will take precedence.
-        ,@body))))
+     (define-minor-mode ,local-name
+       ,docstring
+       :keymap (lithium-keymap ,keymap-spec ',name)
+       ;; TODO: consider making local modes promote to overriding-local-map
+       ;; and global modes, to overriding-terminal-local-map, so that
+       ;; local modes can remain enabled while global modes are enabled
+       ;; and so that the latter will take precedence.
+       ,@body)))
 
 (defmacro lithium-define-global-mode (name
                                       docstring
