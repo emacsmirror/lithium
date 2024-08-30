@@ -171,18 +171,6 @@ responsible for doing it."
         ;; and global modes, to overriding-terminal-local-map, so that
         ;; local modes can remain enabled while global modes are enabled
         ;; and so that the latter will take precedence.
-        (if ,local-name
-            (if lithium-overriding-map
-                (message "WARNING: %s is already an overriding map!"
-                         lithium-overriding-map)
-              ;; (error "%s is already an overriding map!"
-              ;;        lithium-overriding-map)
-              (lithium--push-overriding-map ,keymap)
-              ;; register this mode's keymap as having been promoted to terminal local
-              (setq lithium-overriding-map ,keymap))
-          (lithium--pop-overriding-map ,keymap)
-          ;; unregister this as a promoted overriding map
-          (setq lithium-overriding-map nil))
         ,@body))))
 
 (defmacro lithium-define-global-mode (name
@@ -202,7 +190,9 @@ all buffers, and the exit hooks are run just once."
         (post-entry (intern (concat (symbol-name name) "-post-entry-hook")))
         (pre-exit (intern (concat (symbol-name name) "-pre-exit-hook")))
         (post-exit (intern (concat (symbol-name name) "-post-exit-hook")))
-        (local-name (intern (concat "local-" (symbol-name name)))))
+        (local-name (intern (concat "local-" (symbol-name name))))
+        ;; note the keymap is part of the local rather than global mode
+        (keymap (intern (concat "local-" (symbol-name name) "-map"))))
     `(progn
 
        (defvar ,pre-entry nil
@@ -224,9 +214,27 @@ all buffers, and the exit hooks are run just once."
          (lambda ()
            (unless (minibufferp)
              (,local-name 1)))
-         (when ,name
-           (run-hooks
-            (quote ,post-entry))))
+         (if ,name
+             ;; we handle promotion and demotion of the keymap here
+             ;; and in the wrapping local mode macro rather than in
+             ;; the underlying minor mode macro since, as this is a
+             ;; "globalized" minor mode, we invoke local minor mode
+             ;; entry in every buffer, and that would result in the
+             ;; map being promoted N times, and would prevent us from
+             ;; detecting a real problem with any improper promoted
+             ;; keymap state prior to promotion of the current keymap.
+             (progn
+               (when lithium-overriding-map
+                 (error "%s is already an overriding map!"
+                        lithium-overriding-map))
+               (lithium--push-overriding-map ,keymap)
+               ;; register this mode's keymap as having been promoted to terminal local
+               (setq lithium-overriding-map ,keymap)
+               (run-hooks
+                (quote ,post-entry)))
+           (lithium--pop-overriding-map ,keymap)
+           ;; unregister this as a promoted overriding map
+           (setq lithium-overriding-map nil)))
 
        ;; mark this mode as a global mode
        ;; for use in application-level predicates
@@ -242,7 +250,8 @@ all buffers, and the exit hooks are run just once."
   (let ((pre-entry (intern (concat (symbol-name name) "-pre-entry-hook")))
         (post-entry (intern (concat (symbol-name name) "-post-entry-hook")))
         (pre-exit (intern (concat (symbol-name name) "-pre-exit-hook")))
-        (post-exit (intern (concat (symbol-name name) "-post-exit-hook"))))
+        (post-exit (intern (concat (symbol-name name) "-post-exit-hook")))
+        (keymap (intern (concat (symbol-name name) "-map"))))
     `(progn
 
        (defvar ,pre-entry nil
@@ -259,9 +268,19 @@ all buffers, and the exit hooks are run just once."
          ,name
          ,keymap-spec
          ,@body
-         (when ,name
-           (run-hooks
-            (quote ,post-entry))))
+         (if ,name
+             (progn
+               (when lithium-overriding-map
+                 (error "%s is already an overriding map!"
+                        lithium-overriding-map))
+               (lithium--push-overriding-map ,keymap)
+               ;; register this mode's keymap as having been promoted to terminal local
+               (setq lithium-overriding-map ,keymap)
+               (run-hooks
+                (quote ,post-entry)))
+           (lithium--pop-overriding-map ,keymap)
+           ;; unregister this as a promoted overriding map
+           (setq lithium-overriding-map nil)))
 
        ;; mark this mode as a local mode - not technically needed
        ;; since properties default to nil, but for good measure
