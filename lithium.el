@@ -3,6 +3,7 @@
 ;; Author: Siddhartha Kasivajhula <sid@countvajhula.com>
 ;; URL: https://github.com/countvajhula/lithium
 ;; Version: 0.0
+;; Package-Requires: ((emacs "24.4"))
 ;; Keywords: convenience, emulations, lisp, tools
 
 ;; This program is "part of the world," in the sense described at
@@ -44,9 +45,9 @@ outside the jurisdiction of the minor mode.")
   "Helper to define an individual key according to spec.
 
 Sample invocation:
- (lithium--define-key (list \"a\" 'some-function t)
+ (lithium--define-key (list \"a\" \\='some-function t)
                       some-mode-map
-                      'some-mode)
+                      \\='some-mode)
 
 Parse the KEYSPEC to define the key in KEYMAP for MODE.
 
@@ -121,12 +122,12 @@ Transient, and also by Emacs's built-in `set-transient-map'."
   "Suspend the current overriding terminal local map.
 
 Typically, lithium mode keymaps are enabled and disabled by the minor
-mode that defines these maps. But the ordinary keymap priority of
+mode that defines these maps.  But the ordinary keymap priority of
 minor modes is not sufficient for our purposes, and we need to also
 promote these keymaps to overriding terminal local upon minor mode
-entry. Yet, since keymap lookup consults these maps prior to any logic
+entry.  Yet, since keymap lookup consults these maps prior to any logic
 related to minor modes, it also means that this map now takes
-precedence even in cases where the minor mode is not active. In such
+precedence even in cases where the minor mode is not active.  In such
 cases, we need to explicitly suspend the keymap from terminal local,
 and reinstate it upon re-entering a context where the usual minor mode
 controls are sufficient."
@@ -144,19 +145,26 @@ controls are sufficient."
                                keymap-spec
                                &rest
                                body)
-  "Define a lithium mode.
+  "Define a lithium mode named NAME.
 
 The entry hook is called after entering the mode, and the exit hook is
-called after exiting the mode. If there is a keybinding that exits,
+called after exiting the mode.  If there is a keybinding that exits,
 the action is performed _before_ exiting the mode, and thus before
 running the exit hook.
 
-A mode may be exited intrinsically or extrinsically. We consider a
+A mode may be exited intrinsically or extrinsically.  We consider a
 command defined as \"exiting\" to result in an intrinsic exit, and an
-external interrup to exit the mode is considered extrinsic. For
+external interrup to exit the mode is considered extrinsic.  For
 intrinsic exits, the lithium implementation is responsible for calling
-the post-exit hook. For extrinsic exits, the external agency is
-responsible for doing it."
+the post-exit hook.  For extrinsic exits, the external agency is
+responsible for doing it.
+
+If the mode is global, then its LOCAL-NAME may differ from the global
+name. The global name is used in exiting commands so that we exit the
+mode globally rather than locally.  The local name is used as the name
+of the minor mode itself.  DOCSTRING and BODY are forwarded to
+`define-minor-mode'.  KEYMAP-SPEC is parsed and then forwarded, as
+well."
   (declare (indent defun))
   `(progn
 
@@ -174,13 +182,16 @@ responsible for doing it."
                                       keymap-spec
                                       &rest
                                       body)
-  "Define a global lithium mode.
+  "Define a global lithium mode named NAME.
 
 This considers entry and exit to occur globally rather than in a
-buffer-specific way. That is, entering such a mode from any buffer
+buffer-specific way.  That is, entering such a mode from any buffer
 enters the mode in all buffers, and any entry hooks are run just once
-at this time. Likewise, exiting while in any buffer exits the mode in
-all buffers, and the exit hooks are run just once."
+at this time.  Likewise, exiting while in any buffer exits the mode in
+all buffers, and the exit hooks are run just once.
+
+DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
+`lithium-define-mode'."
   (declare (indent defun))
   (let ((pre-entry (intern (concat (symbol-name name) "-pre-entry-hook")))
         (post-entry (intern (concat (symbol-name name) "-post-entry-hook")))
@@ -241,7 +252,10 @@ all buffers, and the exit hooks are run just once."
                                      keymap-spec
                                      &rest
                                      body)
-  "Define a lithium mode that's local to a buffer."
+  "Define a lithium mode named NAME that's local to a buffer.
+
+DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
+`lithium-define-mode'."
   (declare (indent defun))
   (let ((pre-entry (intern (concat (symbol-name name) "-pre-entry-hook")))
         (post-entry (intern (concat (symbol-name name) "-post-entry-hook")))
@@ -332,6 +346,7 @@ all buffers, and the exit hooks are run just once."
   (remove-hook 'minibuffer-exit-hook
                #'lithium-reinstate-overriding-map))
 
+;;;###autoload
 (define-minor-mode lithium-mode
   "Minor mode for managing necessary global state for Lithium modes.
 
