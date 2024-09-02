@@ -190,6 +190,9 @@ enters the mode in all buffers, and any entry hooks are run just once
 at this time.  Likewise, exiting while in any buffer exits the mode in
 all buffers, and the exit hooks are run just once.
 
+This also defines `NAME-enter' and `NAME-exit' functions which accept
+no arguments and enter and exit the mode, respectively.
+
 DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
 `lithium-define-mode'."
   (declare (indent defun))
@@ -199,7 +202,13 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
         (post-exit (intern (concat (symbol-name name) "-post-exit-hook")))
         (local-name (intern (concat "local-" (symbol-name name))))
         ;; note the keymap is part of the local rather than global mode
-        (keymap (intern (concat "local-" (symbol-name name) "-map"))))
+        (keymap (intern (concat "local-" (symbol-name name) "-map")))
+        (exit-mode (intern
+                    (concat (symbol-name name)
+                            "-exit")))
+        (enter-mode (intern
+                     (concat (symbol-name name)
+                             "-enter"))))
     `(progn
 
        (defvar ,pre-entry nil
@@ -243,6 +252,14 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
            ;; unregister this as a promoted overriding map
            (setq lithium-overriding-map nil)))
 
+       (defun ,enter-mode ()
+         "Enter mode."
+         (lithium-enter-mode ',name))
+
+       (defun ,exit-mode ()
+         "Exit mode."
+         (lithium-exit-mode ',name))
+
        ;; mark this mode as a global mode
        ;; for use in application-level predicates
        (put ',name 'lithium-global t))))
@@ -254,6 +271,9 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
                                      body)
   "Define a lithium mode named NAME that's local to a buffer.
 
+This also defines `NAME-enter' and `NAME-exit' functions which accept
+no arguments and enter and exit the mode, respectively.
+
 DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
 `lithium-define-mode'."
   (declare (indent defun))
@@ -261,7 +281,13 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
         (post-entry (intern (concat (symbol-name name) "-post-entry-hook")))
         (pre-exit (intern (concat (symbol-name name) "-pre-exit-hook")))
         (post-exit (intern (concat (symbol-name name) "-post-exit-hook")))
-        (keymap (intern (concat (symbol-name name) "-map"))))
+        (keymap (intern (concat (symbol-name name) "-map")))
+        (exit-mode (intern
+                    (concat (symbol-name name)
+                            "-exit")))
+        (enter-mode (intern
+                     (concat (symbol-name name)
+                             "-enter"))))
     `(progn
 
        (defvar ,pre-entry nil
@@ -293,6 +319,14 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
            (lithium--pop-overriding-map ,keymap)
            ;; unregister this as a promoted overriding map
            (setq lithium-overriding-map nil)))
+
+       (defun ,enter-mode ()
+         "Enter mode."
+         (lithium-enter-mode ',name))
+
+       (defun ,exit-mode ()
+         "Exit mode."
+         (lithium-exit-mode ',name))
 
        ;; mark this mode as a local mode - not technically needed
        ;; since properties default to nil, but for good measure
