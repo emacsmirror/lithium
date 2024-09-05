@@ -30,14 +30,16 @@
 
 ;;; Code:
 
-(defvar lithium-overriding-map nil
-  "The overriding terminal local map currently in effect.
+(defvar lithium-current-global-mode nil)
+(defvar-local lithium-current-local-mode nil)
+(defvar lithium-promoted-map nil
+  "The current overriding lithium mode keymap.
 
-There can be only one, and it's put in place upon lithium mode entry.
-As there are cases where minor mode controls are not in effect, and
-terminal local is a global concern, we need to keep track of this
-overriding map globally so that it can be suspended, if need be,
-outside the jurisdiction of the minor mode.")
+A keymap corresponding to a lithium mode that is currently promoted
+as an overriding terminal local map, meaning that it takes precedence
+over all other keybindings. From Lithium's perspective, only one of
+these may be active at any time, based on context. We keep track of
+which one it is so that we can demote it before promoting another.")
 
 ;; TODO: should we define a mode struct that is passed around internally,
 ;; instead of interning global symbol names to discover hooks?
@@ -107,6 +109,22 @@ SPEC is the set of keybinding specifications."
 (defun lithium--push-overriding-map (keymap)
   "Make the KEYMAP take precedence over all other keymaps.
 
+Typically, lithium mode keymaps are enabled and disabled by the minor
+mode that defines these maps.  But as the ordinary keymap priority of
+minor modes is not sufficient for our purposes, we need to also
+promote these keymaps to overriding terminal local upon minor mode
+entry.
+
+Yet, since keymap lookup consults these maps prior to any logic
+related to minor modes, this map would now take precedence even in
+cases where the minor mode is not active. So we need to be careful to
+demote maps in settings outside the jurisdiction of the minor mode,
+such as in the minibuffer.
+
+There can be only one such active overriding map, though many
+different lithium modes may be active in different buffers and
+globally.
+
 This uses the internal `internal-push-keymap' utility, used by Hydra,
 Transient, and also by Emacs's built-in `set-transient-map'."
   (internal-push-keymap keymap 'overriding-terminal-local-map))
@@ -118,26 +136,30 @@ This uses the internal `internal-pop-keymap' utility, used by Hydra,
 Transient, and also by Emacs's built-in `set-transient-map'."
   (internal-pop-keymap keymap 'overriding-terminal-local-map))
 
-(defun lithium-suspend-overriding-map ()
-  "Suspend the current overriding terminal local map.
-
-Typically, lithium mode keymaps are enabled and disabled by the minor
-mode that defines these maps.  But the ordinary keymap priority of
-minor modes is not sufficient for our purposes, and we need to also
-promote these keymaps to overriding terminal local upon minor mode
-entry.  Yet, since keymap lookup consults these maps prior to any logic
-related to minor modes, it also means that this map now takes
-precedence even in cases where the minor mode is not active.  In such
-cases, we need to explicitly suspend the keymap from terminal local,
-and reinstate it upon re-entering a context where the usual minor mode
-controls are sufficient."
-  (when lithium-overriding-map
-    (lithium--pop-overriding-map lithium-overriding-map)))
-
-(defun lithium-reinstate-overriding-map ()
-  "Reinstate a suspended overriding terminal local map."
-  (when lithium-overriding-map
-    (lithium--push-overriding-map lithium-overriding-map)))
+(defun lithium-promote-appropriate-keymap (&rest _)
+  "Promote the appropriate keymap to overriding terminal local."
+  ;; first, demote any existing promoted lithium map
+  (when lithium-promoted-map
+    (lithium--pop-overriding-map lithium-promoted-map)
+    (setq lithium-promoted-map nil))
+  ;; then promote the appropriate one
+  (let ((map-to-promote
+         (eval
+          (cond ((minibufferp) ; do not promote any map in the minibuffer
+                 nil)
+                (lithium-current-global-mode
+                 (intern
+                  (concat (symbol-name lithium-current-global-mode)
+                          "-map")))
+                (lithium-current-local-mode
+                 (intern
+                  (concat (symbol-name lithium-current-local-mode)
+                          "-map")))
+                ;; take no action otherwise
+                (t nil)))))
+    (when map-to-promote
+      (lithium--push-overriding-map map-to-promote)
+      (setq lithium-promoted-map map-to-promote))))
 
 (defmacro lithium-define-mode (name
                                docstring
@@ -240,17 +262,12 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
              ;; detecting a real problem with any improper promoted
              ;; keymap state prior to promotion of the current keymap.
              (progn
-               (when lithium-overriding-map
-                 (error "%s is already an overriding map!"
-                        lithium-overriding-map))
-               (lithium--push-overriding-map ,keymap)
-               ;; register this mode's keymap as having been promoted to terminal local
-               (setq lithium-overriding-map ,keymap)
+               (setq lithium-current-global-mode ',name)
+               (lithium-promote-appropriate-keymap)
                (run-hooks
                 (quote ,post-entry)))
-           (lithium--pop-overriding-map ,keymap)
-           ;; unregister this as a promoted overriding map
-           (setq lithium-overriding-map nil)))
+           (setq lithium-current-global-mode nil)
+           (lithium-promote-appropriate-keymap)))
 
        (defun ,enter-mode ()
          "Enter mode."
@@ -308,17 +325,12 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
          ;; use a macro of some kind? `lithium-mode-toggle-syntax'
          (if ,name
              (progn
-               (when lithium-overriding-map
-                 (error "%s is already an overriding map!"
-                        lithium-overriding-map))
-               (lithium--push-overriding-map ,keymap)
-               ;; register this mode's keymap as having been promoted to terminal local
-               (setq lithium-overriding-map ,keymap)
+               (setq lithium-current-local-mode ',name)
+               (lithium-promote-appropriate-keymap)
                (run-hooks
                 (quote ,post-entry)))
-           (lithium--pop-overriding-map ,keymap)
-           ;; unregister this as a promoted overriding map
-           (setq lithium-overriding-map nil)))
+           (setq lithium-current-local-mode nil)
+           (lithium-promote-appropriate-keymap)))
 
        (defun ,enter-mode ()
          "Enter mode."
@@ -368,17 +380,17 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
 
 (defun lithium-initialize ()
   "Initialize any global state necessary for Lithium mode operation."
-  (add-hook 'minibuffer-setup-hook
-            #'lithium-suspend-overriding-map)
-  (add-hook 'minibuffer-exit-hook
-            #'lithium-reinstate-overriding-map))
+  (add-hook 'window-buffer-change-functions
+            #'lithium-promote-appropriate-keymap)
+  (add-hook 'window-selection-change-functions
+            #'lithium-promote-appropriate-keymap))
 
 (defun lithium-disable ()
   "Remove any global state defined by Lithium."
-  (remove-hook 'minibuffer-setup-hook
-               #'lithium-suspend-overriding-map)
-  (remove-hook 'minibuffer-exit-hook
-               #'lithium-reinstate-overriding-map))
+  (remove-hook 'window-buffer-change-functions
+               #'lithium-promote-appropriate-keymap)
+  (remove-hook 'window-selection-change-functions
+               #'lithium-promote-appropriate-keymap))
 
 ;;;###autoload
 (define-minor-mode lithium-mode
