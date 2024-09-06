@@ -30,8 +30,16 @@
 
 ;;; Code:
 
+(require 'cl-lib)
+
+(cl-defstruct lithium-mode-metadata
+  "Metadata for a lithium mode."
+  (name nil :documentation "The symbol that is the mode name.")
+  (map nil :documentation "The keymap for the mode."))
+
 (defvar lithium-current-global-mode nil)
 (defvar-local lithium-current-local-mode nil)
+;; TODO: rename
 (defvar lithium-promoted-map nil
   "The current overriding lithium mode keymap.
 
@@ -144,19 +152,14 @@ Transient, and also by Emacs's built-in `set-transient-map'."
     (setq lithium-promoted-map nil))
   ;; then promote the appropriate one
   (let ((map-to-promote
-         (eval
-          (cond ((minibufferp) ; do not promote any map in the minibuffer
-                 nil)
-                (lithium-current-global-mode
-                 (intern
-                  (concat (symbol-name lithium-current-global-mode)
-                          "-map")))
-                (lithium-current-local-mode
-                 (intern
-                  (concat (symbol-name lithium-current-local-mode)
-                          "-map")))
-                ;; take no action otherwise
-                (t nil)))))
+         (cond ((minibufferp) ; do not promote any map in the minibuffer
+                nil)
+               (lithium-current-global-mode
+                (lithium-mode-metadata-map lithium-current-global-mode))
+               (lithium-current-local-mode
+                (lithium-mode-metadata-map lithium-current-local-mode))
+               ;; take no action otherwise
+               (t nil))))
     (when map-to-promote
       (lithium--push-overriding-map map-to-promote)
       (setq lithium-promoted-map map-to-promote))))
@@ -262,7 +265,9 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
              ;; detecting a real problem with any improper promoted
              ;; keymap state prior to promotion of the current keymap.
              (progn
-               (setq lithium-current-global-mode ',name)
+               (setq lithium-current-global-mode
+                     (make-lithium-mode-metadata :name ',name
+                                                 :map ,keymap))
                (lithium-promote-appropriate-keymap)
                (run-hooks
                 (quote ,post-entry)))
@@ -325,7 +330,9 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
          ;; use a macro of some kind? `lithium-mode-toggle-syntax'
          (if ,name
              (progn
-               (setq lithium-current-local-mode ',name)
+               (setq lithium-current-local-mode
+                     (make-lithium-mode-metadata :name ',name
+                                                 :map ,keymap))
                (lithium-promote-appropriate-keymap)
                (run-hooks
                 (quote ,post-entry)))
