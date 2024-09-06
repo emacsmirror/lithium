@@ -39,7 +39,6 @@
 
 (defvar lithium-current-global-mode nil)
 (defvar-local lithium-current-local-mode nil)
-;; TODO: rename
 (defvar lithium-promoted-map nil
   "The current overriding lithium mode keymap.
 
@@ -144,8 +143,12 @@ This uses the internal `internal-pop-keymap' utility, used by Hydra,
 Transient, and also by Emacs's built-in `set-transient-map'."
   (internal-pop-keymap keymap 'overriding-terminal-local-map))
 
-(defun lithium-promote-appropriate-keymap (&rest _)
-  "Promote the appropriate keymap to overriding terminal local."
+(defun lithium-evaluate-overriding-map (&rest _)
+  "Assess and promote the appropriate modal keymap (if any).
+
+This operation is idempotent, so that if it is called redundantly in
+separate hooks, it should not have any effect on these redundant
+invocations."
   ;; first, demote any existing promoted lithium map
   (when lithium-promoted-map
     (lithium--pop-overriding-map lithium-promoted-map)
@@ -268,11 +271,11 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
                (setq lithium-current-global-mode
                      (make-lithium-mode-metadata :name ',name
                                                  :map ,keymap))
-               (lithium-promote-appropriate-keymap)
+               (lithium-evaluate-overriding-map)
                (run-hooks
                 (quote ,post-entry)))
            (setq lithium-current-global-mode nil)
-           (lithium-promote-appropriate-keymap)))
+           (lithium-evaluate-overriding-map)))
 
        (defun ,enter-mode ()
          "Enter mode."
@@ -333,11 +336,11 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
                (setq lithium-current-local-mode
                      (make-lithium-mode-metadata :name ',name
                                                  :map ,keymap))
-               (lithium-promote-appropriate-keymap)
+               (lithium-evaluate-overriding-map)
                (run-hooks
                 (quote ,post-entry)))
            (setq lithium-current-local-mode nil)
-           (lithium-promote-appropriate-keymap)))
+           (lithium-evaluate-overriding-map)))
 
        (defun ,enter-mode ()
          "Enter mode."
@@ -388,16 +391,16 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
 (defun lithium-initialize ()
   "Initialize any global state necessary for Lithium mode operation."
   (add-hook 'window-buffer-change-functions
-            #'lithium-promote-appropriate-keymap)
+            #'lithium-evaluate-overriding-map)
   (add-hook 'window-selection-change-functions
-            #'lithium-promote-appropriate-keymap))
+            #'lithium-evaluate-overriding-map))
 
 (defun lithium-disable ()
   "Remove any global state defined by Lithium."
   (remove-hook 'window-buffer-change-functions
-               #'lithium-promote-appropriate-keymap)
+               #'lithium-evaluate-overriding-map)
   (remove-hook 'window-selection-change-functions
-               #'lithium-promote-appropriate-keymap))
+               #'lithium-evaluate-overriding-map))
 
 ;;;###autoload
 (define-minor-mode lithium-mode
