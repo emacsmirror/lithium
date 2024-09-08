@@ -37,8 +37,7 @@
   (name nil :documentation "The symbol that is the mode name.")
   (map nil :documentation "The keymap for the mode."))
 
-(defvar lithium-current-global-mode nil)
-(defvar-local lithium-current-local-mode nil)
+(defvar-local lithium-mode-stack nil)
 (defvar lithium-promoted-map nil
   "The current overriding lithium mode keymap.
 
@@ -47,6 +46,23 @@ as an overriding terminal local map, meaning that it takes precedence
 over all other keybindings. From Lithium's perspective, only one of
 these may be active at any time, based on context. We keep track of
 which one it is so that we can demote it before promoting another.")
+
+(defun lithium-current-mode ()
+  "Current mode at the top of the mode stack."
+  (when lithium-mode-stack
+    (car lithium-mode-stack)))
+
+(defun lithium-push-mode (mode)
+  "Push MODE onto the mode stack."
+  (push mode lithium-mode-stack))
+
+(defun lithium-pop-mode (mode-name)
+  "Remove the mode named MODE-NAME in the mode stack, if present."
+  (setq lithium-mode-stack
+        (seq-remove (lambda (m)
+                      (equal (lithium-mode-metadata-name m)
+                             mode-name))
+                    lithium-mode-stack)))
 
 ;; TODO: should we define a mode struct that is passed around internally,
 ;; instead of interning global symbol names to discover hooks?
@@ -157,10 +173,8 @@ invocations."
   (let ((map-to-promote
          (cond ((minibufferp) ; do not promote any map in the minibuffer
                 nil)
-               (lithium-current-global-mode
-                (lithium-mode-metadata-map lithium-current-global-mode))
-               (lithium-current-local-mode
-                (lithium-mode-metadata-map lithium-current-local-mode))
+               ((lithium-current-mode)
+                (lithium-mode-metadata-map (lithium-current-mode)))
                ;; take no action otherwise
                (t nil))))
     (when map-to-promote
@@ -203,6 +217,9 @@ well."
        ;; and global modes, to overriding-terminal-local-map, so that
        ;; local modes can remain enabled while global modes are enabled
        ;; and so that the latter will take precedence.
+       ;; Note also that hydras do not currently override
+       ;; lithium modes. maybe overriding-local-map would be advisable for
+       ;; all modes
        ,@body)))
 
 (defmacro lithium-define-global-mode (name
@@ -268,13 +285,13 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
              ;; detecting a real problem with any improper promoted
              ;; keymap state prior to promotion of the current keymap.
              (progn
-               (setq lithium-current-global-mode
-                     (make-lithium-mode-metadata :name ',name
-                                                 :map ,keymap))
+               (lithium-push-mode
+                (make-lithium-mode-metadata :name ',name
+                                            :map ,keymap))
                (lithium-evaluate-overriding-map)
                (run-hooks
                 (quote ,post-entry)))
-           (setq lithium-current-global-mode nil)
+           (lithium-pop-mode ',name)
            (lithium-evaluate-overriding-map)))
 
        (defun ,enter-mode ()
@@ -333,13 +350,13 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
          ;; use a macro of some kind? `lithium-mode-toggle-syntax'
          (if ,name
              (progn
-               (setq lithium-current-local-mode
-                     (make-lithium-mode-metadata :name ',name
-                                                 :map ,keymap))
+               (lithium-push-mode
+                (make-lithium-mode-metadata :name ',name
+                                            :map ,keymap))
                (lithium-evaluate-overriding-map)
                (run-hooks
                 (quote ,post-entry)))
-           (setq lithium-current-local-mode nil)
+           (lithium-pop-mode ',name)
            (lithium-evaluate-overriding-map)))
 
        (defun ,enter-mode ()
