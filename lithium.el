@@ -54,7 +54,9 @@ which one it is so that we can demote it before promoting another.")
 
 (defun lithium-push-mode (mode)
   "Push MODE onto the mode stack."
-  (push mode lithium-mode-stack))
+  (push mode lithium-mode-stack)
+  ;; ensure the new mode's keymap now takes precedence
+  (lithium-evaluate-overriding-map))
 
 (defun lithium-pop-mode (mode-name)
   "Remove the mode named MODE-NAME in the mode stack, if present."
@@ -62,7 +64,10 @@ which one it is so that we can demote it before promoting another.")
         (seq-remove (lambda (m)
                       (equal (lithium-mode-metadata-name m)
                              mode-name))
-                    lithium-mode-stack)))
+                    lithium-mode-stack))
+  ;; if there is a prior top mode, ensure that the precedence of its
+  ;; keymap is restored
+  (lithium-evaluate-overriding-map))
 
 ;; TODO: should we define a mode struct that is passed around internally,
 ;; instead of interning global symbol names to discover hooks?
@@ -288,11 +293,9 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
                (lithium-push-mode
                 (make-lithium-mode-metadata :name ',name
                                             :map ,keymap))
-               (lithium-evaluate-overriding-map)
                (run-hooks
                 (quote ,post-entry)))
-           (lithium-pop-mode ',name)
-           (lithium-evaluate-overriding-map)))
+           (lithium-pop-mode ',name)))
 
        (defun ,enter-mode ()
          "Enter mode."
@@ -353,11 +356,9 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
                (lithium-push-mode
                 (make-lithium-mode-metadata :name ',name
                                             :map ,keymap))
-               (lithium-evaluate-overriding-map)
                (run-hooks
                 (quote ,post-entry)))
-           (lithium-pop-mode ',name)
-           (lithium-evaluate-overriding-map)))
+           (lithium-pop-mode ',name)))
 
        (defun ,enter-mode ()
          "Enter mode."
