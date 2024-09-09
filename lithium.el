@@ -134,7 +134,7 @@ SPEC is the set of keybinding specifications."
        (lithium--define-key keyspec keymap ,mode))
      keymap))
 
-(defun lithium--push-overriding-map (keymap)
+(defun lithium--set-overriding-map (keymap)
   "Make the KEYMAP take precedence over all other keymaps.
 
 Typically, lithium mode keymaps are enabled and disabled by the minor
@@ -157,7 +157,7 @@ This uses the internal `internal-push-keymap' utility, used by Hydra,
 Transient, and also by Emacs's built-in `set-transient-map'."
   (internal-push-keymap keymap 'overriding-terminal-local-map))
 
-(defun lithium--pop-overriding-map (keymap)
+(defun lithium--remove-overriding-map (keymap)
   "Remove the precedence of KEYMAP over all other keymaps.
 
 This uses the internal `internal-pop-keymap' utility, used by Hydra,
@@ -172,7 +172,7 @@ separate hooks, it should not have any effect on these redundant
 invocations."
   ;; first, demote any existing promoted lithium map
   (when lithium-promoted-map
-    (lithium--pop-overriding-map lithium-promoted-map)
+    (lithium--remove-overriding-map lithium-promoted-map)
     (setq lithium-promoted-map nil))
   ;; then promote the appropriate one
   (let ((map-to-promote
@@ -183,7 +183,7 @@ invocations."
                ;; take no action otherwise
                (t nil))))
     (when map-to-promote
-      (lithium--push-overriding-map map-to-promote)
+      (lithium--set-overriding-map map-to-promote)
       (setq lithium-promoted-map map-to-promote))))
 
 (defmacro lithium-define-mode (name
