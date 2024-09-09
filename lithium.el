@@ -54,9 +54,7 @@ which one it is so that we can demote it before promoting another.")
 
 (defun lithium-push-mode (mode)
   "Push MODE onto the mode stack."
-  (push mode lithium-mode-stack)
-  ;; ensure the new mode's keymap now takes precedence
-  (lithium-evaluate-overriding-map))
+  (push mode lithium-mode-stack))
 
 (defun lithium-pop-mode (mode-name)
   "Remove the mode named MODE-NAME in the mode stack, if present."
@@ -64,10 +62,7 @@ which one it is so that we can demote it before promoting another.")
         (seq-remove (lambda (m)
                       (equal (lithium-mode-metadata-name m)
                              mode-name))
-                    lithium-mode-stack))
-  ;; if there is a prior top mode, ensure that the precedence of its
-  ;; keymap is restored
-  (lithium-evaluate-overriding-map))
+                    lithium-mode-stack)))
 
 ;; TODO: should we define a mode struct that is passed around internally,
 ;; instead of interning global symbol names to discover hooks?
@@ -201,31 +196,42 @@ running the exit hook.
 
 A mode may be exited intrinsically or extrinsically.  We consider a
 command defined as \"exiting\" to result in an intrinsic exit, and an
-external interrup to exit the mode is considered extrinsic.  For
+external interrupt to exit the mode is considered extrinsic.  For
 intrinsic exits, the lithium implementation is responsible for calling
 the post-exit hook.  For extrinsic exits, the external agency is
 responsible for doing it.
 
-If the mode is global, then its LOCAL-NAME may differ from the global
-name. The global name is used in exiting commands so that we exit the
-mode globally rather than locally.  The local name is used as the name
-of the minor mode itself.  DOCSTRING and BODY are forwarded to
-`define-minor-mode'.  KEYMAP-SPEC is parsed and then forwarded, as
-well."
-  (declare (indent defun))
-  `(progn
+If the mode is global, then its LOCAL-NAME differs from the global
+NAME.  In such cases, the local name is used as the name of the minor
+mode itself, while the global name is used in exiting commands so that
+we exit the mode globally rather than locally.
 
-     (define-minor-mode ,local-name
-       ,docstring
-       :keymap (lithium-keymap ,keymap-spec ',name)
-       ;; TODO: consider making local modes promote to overriding-local-map
-       ;; and global modes, to overriding-terminal-local-map, so that
-       ;; local modes can remain enabled while global modes are enabled
-       ;; and so that the latter will take precedence.
-       ;; Note also that hydras do not currently override
-       ;; lithium modes. maybe overriding-local-map would be advisable for
-       ;; all modes
-       ,@body)))
+DOCSTRING and BODY are forwarded to `define-minor-mode'.  KEYMAP-SPEC
+is parsed and then forwarded, as well."
+  (declare (indent defun))
+  (let ((keymap (intern (concat (symbol-name local-name) "-map"))))
+    `(progn
+
+       (define-minor-mode ,local-name
+         ,docstring
+         :keymap (lithium-keymap ,keymap-spec ',name)
+         ;; TODO: consider making local modes promote to overriding-local-map
+         ;; and global modes, to overriding-terminal-local-map, so that
+         ;; local modes can remain enabled while global modes are enabled
+         ;; and so that the latter will take precedence.
+         ;; Note also that hydras do not currently override
+         ;; lithium modes. maybe overriding-local-map would be advisable for
+         ;; all modes
+
+         (if ,local-name
+             ;; push the mode onto the local mode stack
+             ;; the local name is an implementation detail - we push
+             ;; the mode as we know it, that is, its "name."
+             (lithium-push-mode
+              (make-lithium-mode-metadata :name ',name
+                                          :map ,keymap))
+           (lithium-pop-mode ',name))
+         ,@body))))
 
 (defmacro lithium-define-global-mode (name
                                       docstring
@@ -290,12 +296,13 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
              ;; detecting a real problem with any improper promoted
              ;; keymap state prior to promotion of the current keymap.
              (progn
-               (lithium-push-mode
-                (make-lithium-mode-metadata :name ',name
-                                            :map ,keymap))
+               ;; ensure the new mode's keymap now takes precedence
+               (lithium-evaluate-overriding-map)
                (run-hooks
                 (quote ,post-entry)))
-           (lithium-pop-mode ',name)))
+           ;; if there is a prior top mode, ensure that the precedence of its
+           ;; keymap is restored
+           (lithium-evaluate-overriding-map)))
 
        (defun ,enter-mode ()
          "Enter mode."
@@ -353,12 +360,13 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
          ;; use a macro of some kind? `lithium-mode-toggle-syntax'
          (if ,name
              (progn
-               (lithium-push-mode
-                (make-lithium-mode-metadata :name ',name
-                                            :map ,keymap))
+               ;; ensure the new mode's keymap now takes precedence
+               (lithium-evaluate-overriding-map)
                (run-hooks
                 (quote ,post-entry)))
-           (lithium-pop-mode ',name)))
+           ;; if there is a prior top mode, ensure that the precedence of its
+           ;; keymap is restored
+           (lithium-evaluate-overriding-map)))
 
        (defun ,enter-mode ()
          "Enter mode."
