@@ -53,11 +53,10 @@ which one it is so that we can demote it before promoting another.")
     (car lithium-mode-stack)))
 
 (defun lithium-current-mode-name ()
-  "Name of the current mode as a string."
+  "Name of the current mode as a symbol."
   (let ((mode (lithium-current-mode)))
     (when mode
-      (symbol-name
-       (lithium-mode-metadata-name mode)))))
+      (lithium-mode-metadata-name mode))))
 
 (defun lithium-push-mode (mode)
   "Push MODE onto the mode stack."
