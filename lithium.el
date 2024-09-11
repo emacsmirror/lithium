@@ -3,7 +3,7 @@
 ;; Author: Siddhartha Kasivajhula <sid@countvajhula.com>
 ;; URL: https://github.com/countvajhula/lithium
 ;; Version: 0.0
-;; Package-Requires: ((emacs "24.4"))
+;; Package-Requires: ((emacs "25.1"))
 ;; Keywords: convenience, emulations, lisp, tools
 
 ;; This program is "part of the world," in the sense described at
@@ -43,8 +43,8 @@
 
 A keymap corresponding to a lithium mode that is currently promoted
 as an overriding terminal local map, meaning that it takes precedence
-over all other keybindings. From Lithium's perspective, only one of
-these may be active at any time, based on context. We keep track of
+over all other keybindings.  From Lithium's perspective, only one of
+these may be active at any time, based on context.  We keep track of
 which one it is so that we can demote it before promoting another.")
 
 (defun lithium-current-mode ()
@@ -62,12 +62,12 @@ which one it is so that we can demote it before promoting another.")
   "Push MODE onto the mode stack."
   (push mode lithium-mode-stack))
 
-(defun lithium-pop-mode (mode-name)
-  "Remove the mode named MODE-NAME in the mode stack, if present."
+(defun lithium-pop-mode (name)
+  "Remove the mode named NAME in the mode stack, if present."
   (setq lithium-mode-stack
         (seq-remove (lambda (m)
                       (equal (lithium-mode-metadata-name m)
-                             mode-name))
+                             name))
                     lithium-mode-stack)))
 
 ;; TODO: should we define a mode struct that is passed around internally,
@@ -146,7 +146,7 @@ entry.
 
 Yet, since keymap lookup consults these maps prior to any logic
 related to minor modes, this map would now take precedence even in
-cases where the minor mode is not active. So we need to be careful to
+cases where the minor mode is not active.  So we need to be careful to
 demote maps in settings outside the jurisdiction of the minor mode,
 such as in the minibuffer.
 
@@ -263,8 +263,6 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
         (pre-exit (intern (concat (symbol-name name) "-pre-exit-hook")))
         (post-exit (intern (concat (symbol-name name) "-post-exit-hook")))
         (local-name (intern (concat "local-" (symbol-name name))))
-        ;; note the keymap is part of the local rather than global mode
-        (keymap (intern (concat "local-" (symbol-name name) "-map")))
         (exit-mode (intern
                     (concat (symbol-name name)
                             "-exit")))
@@ -339,7 +337,6 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
         (post-entry (intern (concat (symbol-name name) "-post-entry-hook")))
         (pre-exit (intern (concat (symbol-name name) "-pre-exit-hook")))
         (post-exit (intern (concat (symbol-name name) "-post-exit-hook")))
-        (keymap (intern (concat (symbol-name name) "-map")))
         (exit-mode (intern
                     (concat (symbol-name name)
                             "-exit")))
