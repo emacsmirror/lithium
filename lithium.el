@@ -256,7 +256,20 @@ This also defines `NAME-enter' and `NAME-exit' functions which accept
 no arguments and enter and exit the mode, respectively.
 
 DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
-`lithium-define-mode'."
+`lithium-define-mode'.
+
+Note that BODY is executed in each buffer during activation or
+deactivation of the local mode rather than once for the global mode.
+As the global mode isn't enabled until the local mode has been enabled
+in all buffers, if you'd like to condition on the state of the mode in
+your code in BODY, use the *local* name of the mode, i.e. `local-'
+prefixed to NAME. To execute code once after enabling or disabling the
+global mode, use the post-entry and post-exit hooks.  This behavior is
+perhaps a bit awkward.  It seems to support all possibilities for
+executing code at certain times, but not necessarily in an intuitive
+way.  This may be improved in the future and may entail backwards
+incompatibility at that stage (please create an issue on the source
+repo if you have a specific opinion about this!)."
   (declare (indent defun))
   (let ((pre-entry (intern (concat (symbol-name name) "-pre-entry-hook")))
         (post-entry (intern (concat (symbol-name name) "-post-entry-hook")))
