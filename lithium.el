@@ -221,13 +221,6 @@ is parsed and then forwarded, as well."
        (define-minor-mode ,local-name
          ,docstring
          :keymap (lithium-keymap ,keymap-spec ',name)
-         ;; TODO: consider making local modes promote to overriding-local-map
-         ;; and global modes, to overriding-terminal-local-map, so that
-         ;; local modes can remain enabled while global modes are enabled
-         ;; and so that the latter will take precedence.
-         ;; Note also that hydras do not currently override
-         ;; lithium modes. maybe overriding-local-map would be advisable for
-         ;; all modes
 
          (if ,local-name
              ;; push the mode onto the local mode stack
