@@ -10,7 +10,7 @@ Lithium allows you to define Vim-like modes using Emacs's minor mode infrastruct
 
 Modes also define comprehensive lifecycle hooks so that custom behavior may be attached to mode pre-entry, post-entry, pre-exit, and post-exit.
 
-Lithium resembles existing tools such as Hydra, Transient, and Evil. It differs from Hydra and Transient in being designed to be *persistent*, like Evil, and differs from Evil in being narrowly focused on modal behavior and thus minimal in comparison (Evil includes much more than just the modal interface), and also in supporting global (rather than buffer-local) modes. Lithium would be a good choice if what you're trying to do is fundamentally modal in nature (in the Vim sense), and if you would like to have clean and well-modeled transitions between modes. It's a good fit if your desired modal UI is *persistent* rather than "transient."
+Lithium resembles existing tools such as Hydra, Transient, and Evil. It differs from Hydra and Transient in being designed to be *persistent*, like Evil, and differs from Evil in being narrowly focused on modal behavior and thus minimal in comparison (Evil includes much more than just the modal interface), and also in supporting global (rather than only buffer-local) modes. Lithium would be a good choice if what you're trying to do is fundamentally modal in nature (in the Vim sense), and if you would like to have clean and well-modeled transitions between modes. It's a good fit if your desired modal UI is *persistent* rather than "transient."
 
 .. [1] Lithium is the lightest "metal." 🐶
 

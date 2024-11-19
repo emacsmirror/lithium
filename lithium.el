@@ -38,6 +38,7 @@
   (map nil :documentation "The keymap for the mode."))
 
 (defvar-local lithium-mode-stack nil)
+
 (defvar lithium-promoted-map nil
   "The current overriding lithium mode keymap.
 
