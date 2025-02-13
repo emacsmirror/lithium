@@ -166,6 +166,21 @@ This uses the internal `internal-pop-keymap' utility, used by Hydra,
 Transient, and also by Emacs's built-in `set-transient-map'."
   (internal-pop-keymap keymap 'overriding-terminal-local-map))
 
+(defun lithium--overriding-map-p ()
+  "Check whether there is currently an overriding keymap."
+  overriding-terminal-local-map)
+
+(defun lithium--suspend-overriding-map ()
+  "Suspend the current overriding map."
+  (when lithium-promoted-map
+    (lithium--remove-overriding-map lithium-promoted-map)
+    (setq lithium-promoted-map nil)))
+
+(defun lithium--suspend-overriding-map-advice (_keymap symbol &rest _)
+  "Advise suspending a lithium map if another wants to override."
+  (when (eq symbol 'overriding-terminal-local-map)
+    (lithium--suspend-overriding-map)))
+
 (defun lithium-evaluate-overriding-map (&rest _)
   "Assess and promote the appropriate modal keymap (if any).
 
@@ -173,13 +188,16 @@ This operation is idempotent, so that if it is called redundantly in
 separate hooks, it should not have any effect on these redundant
 invocations."
   ;; first, demote any existing promoted lithium map
-  (when lithium-promoted-map
-    (lithium--remove-overriding-map lithium-promoted-map)
-    (setq lithium-promoted-map nil))
+  (lithium--suspend-overriding-map)
   ;; then promote the appropriate one
   (let ((map-to-promote
          (cond ((minibufferp) ; do not promote any map in the minibuffer
                 nil)
+               ;; if there is already an overriding map (presumably, a
+               ;; foreign map, like Hydra or Transient), then do
+               ;; nothing. We do not want to assume overriding status
+               ;; in this case, as it could lead to undefined behavior.
+               ((lithium--overriding-map-p) nil)
                ((lithium-current-mode)
                 (lithium-mode-metadata-map (lithium-current-mode)))
                ;; take no action otherwise
@@ -429,14 +447,16 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
   (add-hook 'window-buffer-change-functions
             #'lithium-evaluate-overriding-map)
   (add-hook 'window-selection-change-functions
-            #'lithium-evaluate-overriding-map))
+            #'lithium-evaluate-overriding-map)
+  (advice-add #'internal-push-keymap :after #'lithium--suspend-overriding-map-advice))
 
 (defun lithium-disable ()
   "Remove any global state defined by Lithium."
   (remove-hook 'window-buffer-change-functions
                #'lithium-evaluate-overriding-map)
   (remove-hook 'window-selection-change-functions
-               #'lithium-evaluate-overriding-map))
+               #'lithium-evaluate-overriding-map)
+  (advice-remove #'internal-push-keymap #'lithium--suspend-overriding-map-advice))
 
 ;;;###autoload
 (define-minor-mode lithium-mode
