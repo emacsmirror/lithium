@@ -177,7 +177,9 @@ Transient, and also by Emacs's built-in `set-transient-map'."
     (setq lithium-promoted-map nil)))
 
 (defun lithium--suspend-overriding-map-advice (_keymap symbol &rest _)
-  "Advise suspending a lithium map if another wants to override."
+  "Advise suspending a lithium map if another wants to override.
+
+SYMBOL is the name of the keymap (argument to the advised function)."
   (when (eq symbol 'overriding-terminal-local-map)
     (lithium--suspend-overriding-map)))
 
