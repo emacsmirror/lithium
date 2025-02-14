@@ -277,7 +277,7 @@ deactivation of the local mode rather than once for the global mode.
 As the global mode isn't enabled until the local mode has been enabled
 in all buffers, if you'd like to condition on the state of the mode in
 your code in BODY, use the *local* name of the mode, i.e. `local-'
-prefixed to NAME. To execute code once after enabling or disabling the
+prefixed to NAME.  To execute code once after enabling or disabling the
 global mode, use the post-entry and post-exit hooks.  This behavior is
 perhaps a bit awkward.  It seems to support all possibilities for
 executing code at certain times, but not necessarily in an intuitive
