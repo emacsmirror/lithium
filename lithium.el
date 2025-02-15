@@ -127,6 +127,19 @@ and set to true, then also exit the MODE after performing the action."
         (kbd key)
         action))))
 
+(defmacro lithium-define-key (mode key fn &optional exit)
+  "Bind KEY to FN in MODE."
+  (let ((keyspec (list key fn (eval exit)))
+        (keymap (intern (concat (symbol-name mode) "-map"))))
+    `(lithium--define-key ',keyspec ,keymap ',mode)))
+
+;; TODO: support the "exit" argument properly
+(defmacro lithium-define-keys (mode spec)
+  "Bind keybindings in KEYSPEC in MODE."
+  (let ((keymap (intern (concat (symbol-name mode) "-map"))))
+    `(dolist (keyspec (quote ,spec))
+       (lithium--define-key keyspec ,keymap ,mode))))
+
 (defmacro lithium-keymap (spec mode)
   "Specify a keymap for the MODE.
 
