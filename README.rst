@@ -28,6 +28,33 @@ Lithium isn't on `MELPA <https://melpa.org/>`_ yet, but you can install a pre-re
       :host github
       :repo "countvajhula/lithium"))
 
+Usage
+=====
+
+.. code-block:: elisp
+
+  (lithium-define-local-mode my-special-mode
+    "My mode."
+    (("h" backward-char)
+     ("j" next-line)
+     ("k" previous-line)
+     ("l" forward-char)
+     ("q" (lambda () (interactive) (message "Bye!")) t))
+    :lighter " demo"
+    :group 'lithium-demo)
+
+  (global-set-key (kbd "C-c l") #'my-special-mode-enter)
+
+Then, ``C-c l`` enters the mode, ``q`` exits it. You can also exit a Lithium mode at any time by invoking a dedicated "exit" function for the mode. In this case, that's ``M-x my-special-mode-exit``.
+
+As Lithium modes are built on top of ordinary Emacs minor modes, you can override keybindings by simply defining keys in the corresponding minor mode map. But Lithium also provides some convenience utilities for the purpose:
+
+.. code-block:: elisp
+
+  (lithium-define-keys my-special-mode
+                       (("h" backward-word)
+                        ("l" forward-word)))
+
 Non-Ownership
 =============
 
