@@ -31,6 +31,11 @@ Lithium isn't on `MELPA <https://melpa.org/>`_ yet, but you can install a pre-re
 Usage
 =====
 
+Defining and Using Modes
+------------------------
+
+You can use Lithium to define a mode (similar to an Emacs minor mode, or an Evil state) that you can enter at any time, and which will have the keybindings you specify. These keybindings have a high priority and override most others in Emacs, but can be overridden by common packages that seek to have the highest priority, including Hydra and Transient.
+
 .. code-block:: elisp
 
   (lithium-define-local-mode my-special-mode
@@ -47,13 +52,69 @@ Usage
 
 Then, ``C-c l`` enters the mode, ``q`` exits it. You can also exit a Lithium mode at any time by invoking a dedicated "exit" function for the mode. In this case, that's ``M-x my-special-mode-exit``.
 
-As Lithium modes are built on top of ordinary Emacs minor modes, you can override keybindings by simply defining keys in the corresponding minor mode map. But Lithium also provides some convenience utilities for the purpose:
+As Lithium modes are built on top of ordinary Emacs minor modes, you can override keybindings by simply defining keys in the corresponding minor mode map. But Lithium also provides some convenient utilities for the purpose:
 
 .. code-block:: elisp
 
   (lithium-define-keys my-special-mode
                        (("h" backward-word)
-                        ("l" forward-word)))
+                        ("l" forward-word)
+                        ("a" (lambda () (interactive) (message "Poke!")))))
+
+Global and Local Modes
+----------------------
+
+Global modes, and their keybindings, are active in all buffers. They are not active in the minibuffer, so that common Emacs actions involving the minibuffer, like saving the file or navigating to a different file, do not conflict with your lithium mode bindings. This is true of local modes, too, but because those are only active in the original buffer and nowhere else.
+
+.. code-block:: elisp
+
+  (lithium-define-global-mode my-global-mode
+    "My global mode."
+    (("h" previous-buffer)
+     ("l" next-buffer)
+     ("q" (lambda () (interactive) (message "Bye!")) t))
+    :lighter " demo"
+    :group 'lithium-demo)
+
+
+  (global-set-key (kbd "C-c b") #'my-global-mode-enter)
+
+Global modes similar to local modes, and can be entered, exited, and customized in the same ways.
+
+Entering a Second Mode
+----------------------
+
+Entering a second mode (either local or global) while the first is still active pushes the new mode onto a buffer-local stack of modes, giving the second mode priority over the first.
+
+.. code-block:: elisp
+
+  (lithium-define-local-mode my-second-mode
+    "My second mode."
+    (("h" backward-sentence)
+     ("j" next-line)
+     ("k" previous-line)
+     ("l" forward-sentence)
+     ("q" (lambda () (interactive) (message "Bye!")) t))
+    :lighter " demo"
+    :group 'lithium-demo)
+
+  (global-set-key (kbd "C-c d") #'my-second-mode-enter)
+
+Now, ``C-c l`` followed by ``C-c d`` results in second mode being on top. Quitting it via ``q`` pops it off the stack returning us to just the first mode, and finally, ``q`` again pops the first lithium mode off the stack as well, making it empty (i.e., no lithium mode active).
+
+You could even stack all three of these defined modes, in any order. Note that exiting a global mode in any buffer exits it in *all* buffers, whether it happens to be on top of the local stack in that buffer or not. The stack of modes is otherwise preserved.
+
+Lifecycle Hooks
+---------------
+
+Lithium provides hooks for every stage of the mode lifecycle:
+
+- pre-entry
+- post-entry
+- pre-exit
+- post-exit
+
+Defining a mode named ``my-mode`` creates hooks named ``my-mode-pre-entry-hook`` ``my-mode-post-entry-hook``, ``my-mode-pre-exit-hook`` and ``my-mode-post-exit-hook`` to which you can attach functionality in the usual way for Emacs hooks.
 
 Non-Ownership
 =============
