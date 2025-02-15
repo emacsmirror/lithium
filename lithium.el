@@ -350,10 +350,12 @@ repo if you have a specific opinion about this!)."
 
        (defun ,enter-mode ()
          "Enter mode."
+         (interactive)
          (lithium-enter-mode ',name))
 
        (defun ,exit-mode ()
          "Exit mode."
+         (interactive)
          (lithium-exit-mode ',name))
 
        ;; mark this mode as a global mode
@@ -413,10 +415,12 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
 
        (defun ,enter-mode ()
          "Enter mode."
+         (interactive)
          (lithium-enter-mode ',name))
 
        (defun ,exit-mode ()
          "Exit mode."
+         (interactive)
          (lithium-exit-mode ',name))
 
        ;; mark this mode as a local mode - not technically needed
