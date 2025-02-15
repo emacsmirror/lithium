@@ -79,7 +79,7 @@ Global modes, and their keybindings, are active in all buffers. They are not act
 
   (global-set-key (kbd "C-c b") #'my-global-mode-enter)
 
-Global modes similar to local modes, and can be entered, exited, and customized in the same ways.
+Global modes are similar to local modes, and can be entered, exited, and customized in the same ways.
 
 Entering a Second Mode
 ----------------------
