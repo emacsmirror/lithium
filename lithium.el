@@ -130,7 +130,7 @@ and set to true, then also exit the MODE after performing the action."
 (defmacro lithium-define-key (mode key fn &optional exit)
   "Bind KEY to FN in MODE.
 
-If EXIT is `t', exit the mode after running the command."
+If EXIT is true, exit the mode after running the command."
   (let ((keyspec (list key fn (eval exit)))
         (keymap (intern
                  (concat (if (lithium-global-mode-p mode)
