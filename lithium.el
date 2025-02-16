@@ -140,7 +140,6 @@ If EXIT is true, exit the mode after running the command."
                          "-map"))))
     `(lithium--define-key ',keyspec ,keymap ',mode)))
 
-;; TODO: support the "exit" argument properly
 (defmacro lithium-define-keys (mode spec)
   "Bind keybindings in SPEC in MODE."
   (let ((keymap (intern
