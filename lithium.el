@@ -71,6 +71,10 @@ which one it is so that we can demote it before promoting another.")
                              name))
                     lithium-mode-stack)))
 
+(defun lithium--stack-contents ()
+  "Modes currently in the stack, by name."
+  (mapcar #'lithium-mode-metadata-name lithium-mode-stack))
+
 ;; TODO: should we define a mode struct that is passed around internally,
 ;; instead of interning global symbol names to discover hooks?
 (defun lithium--define-key (keyspec keymap mode)
