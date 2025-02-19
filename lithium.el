@@ -129,7 +129,20 @@ and set to true, then also exit the MODE after performing the action."
             (run-hooks post-exit)))
       (define-key keymap
         (kbd key)
-        action))))
+        (lambda ()
+          (interactive)
+          (condition-case err
+              (call-interactively action)
+            ;; if we interrupt execution via `C-g', that's fine.
+            ;; but if the command encounters an error during execution,
+            ;; we quit the mode to be on the safe side, and also
+            ;; make a best effort and run exit hooks
+            (error
+             (progn (run-hooks pre-exit)
+                    (funcall mode -1)
+                    (run-hooks post-exit)
+                    ;; re-raise the interrupt
+                    (signal (car err) (cdr err))))))))))
 
 (defmacro lithium-define-key (mode key fn &optional exit)
   "Bind KEY to FN in MODE.
