@@ -75,6 +75,14 @@ which one it is so that we can demote it before promoting another.")
   "Modes currently in the stack, by name."
   (mapcar #'lithium-mode-metadata-name lithium-mode-stack))
 
+(defconst lithium-mundane-errors
+  '(beginning-of-line
+    end-of-line
+    beginning-of-buffer
+    end-of-buffer
+    user-error)
+  "Error signals that are known to be part of normal Emacs operation.")
+
 ;; TODO: should we define a mode struct that is passed around internally,
 ;; instead of interning global symbol names to discover hooks?
 (defun lithium--define-key (keyspec keymap mode)
@@ -121,6 +129,7 @@ and set to true, then also exit the MODE after performing the action."
               ;; command encounters an error during execution,
               ;; we still want to run post-exit hooks to ensure
               ;; that we leave things in a clean state
+              ;; TODO: maybe use `unwind-protect' instead
               ((quit error)
                (progn (run-hooks post-exit)
                       ;; re-raise the interrupt
@@ -138,11 +147,14 @@ and set to true, then also exit the MODE after performing the action."
             ;; we quit the mode to be on the safe side, and also
             ;; make a best effort and run exit hooks
             (error
-             (progn (run-hooks pre-exit)
-                    (funcall mode -1)
-                    (run-hooks post-exit)
-                    ;; re-raise the interrupt
-                    (signal (car err) (cdr err))))))))))
+             (let ((conditions (get (car err) 'error-conditions)))
+               ;; ignore "mundane" errors
+               (unless (member (car conditions) lithium-mundane-errors)
+                 (run-hooks pre-exit)
+                 (funcall mode -1)
+                 (run-hooks post-exit))
+               ;; re-raise the interrupt
+               (signal (car err) (cdr err))))))))))
 
 (defmacro lithium-define-key (mode key fn &optional exit)
   "Bind KEY to FN in MODE.
