@@ -508,7 +508,7 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
             #'lithium-evaluate-overriding-map)
   (add-hook 'window-selection-change-functions
             #'lithium-evaluate-overriding-map)
-  (advice-add #'internal-push-keymap :after #'lithium--suspend-overriding-map-advice))
+  (advice-add #'internal-push-keymap :before #'lithium--suspend-overriding-map-advice))
 
 (defun lithium-disable ()
   "Remove any global state defined by Lithium."
