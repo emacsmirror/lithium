@@ -520,6 +520,8 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
             #'lithium-evaluate-overriding-map)
   (add-hook 'window-selection-change-functions
             #'lithium-evaluate-overriding-map)
+  (add-hook 'window-configuration-change-hook
+            #'lithium-evaluate-overriding-map)
   (advice-add #'internal-push-keymap :before #'lithium--suspend-overriding-map-advice))
 
 (defun lithium-disable ()
@@ -527,6 +529,8 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
   (remove-hook 'window-buffer-change-functions
                #'lithium-evaluate-overriding-map)
   (remove-hook 'window-selection-change-functions
+               #'lithium-evaluate-overriding-map)
+  (remove-hook 'window-configuration-change-hook
                #'lithium-evaluate-overriding-map)
   (advice-remove #'internal-push-keymap #'lithium--suspend-overriding-map-advice))
 
