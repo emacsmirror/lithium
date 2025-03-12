@@ -122,20 +122,15 @@ and set to true, then also exit the MODE after performing the action."
             ;; running the command?
             (run-hooks pre-exit)
             (funcall mode -1)
-            ;; do the action
-            (condition-case err
+            ;; if we interrupt execution via `C-g', or if the
+            ;; command encounters an error during execution,
+            ;; we still want to run post-exit hooks to ensure
+            ;; that we leave things in a clean state
+            (unwind-protect
+                ;; do the action
                 (call-interactively action)
-              ;; if we interrupt execution via `C-g', or if the
-              ;; command encounters an error during execution,
-              ;; we still want to run post-exit hooks to ensure
-              ;; that we leave things in a clean state
-              ;; TODO: maybe use `unwind-protect' instead
-              ((quit error)
-               (progn (run-hooks post-exit)
-                      ;; re-raise the interrupt
-                      (signal (car err) (cdr err)))))
-            ;; run post-exit hook "intrinsically"
-            (run-hooks post-exit)))
+              ;; run post-exit hook "intrinsically"
+              (run-hooks post-exit))))
       (define-key keymap
         (kbd key)
         (lambda ()
@@ -145,7 +140,7 @@ and set to true, then also exit the MODE after performing the action."
             ;; if we interrupt execution via `C-g', that's fine.
             ;; but if the command encounters an error during execution,
             ;; we quit the mode to be on the safe side, and also
-            ;; make a best effort and run exit hooks
+            ;; run exit hooks
             (error
              (let ((conditions (get (car err) 'error-conditions)))
                ;; ignore "mundane" errors
