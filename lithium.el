@@ -211,24 +211,26 @@ globally.
 
 This uses the internal `internal-push-keymap' utility, used by Hydra,
 Transient, and also by Emacs's built-in `set-transient-map'."
-  (internal-push-keymap keymap 'overriding-terminal-local-map))
+  (internal-push-keymap keymap 'overriding-terminal-local-map)
+  (setq lithium-promoted-map keymap))
 
 (defun lithium--remove-overriding-map (keymap)
   "Remove the precedence of KEYMAP over all other keymaps.
 
 This uses the internal `internal-pop-keymap' utility, used by Hydra,
 Transient, and also by Emacs's built-in `set-transient-map'."
-  (internal-pop-keymap keymap 'overriding-terminal-local-map))
+  (internal-pop-keymap keymap 'overriding-terminal-local-map)
+  (setq lithium-promoted-map nil))
 
-(defun lithium--overriding-map-p ()
-  "Check whether there is currently an overriding keymap."
-  overriding-terminal-local-map)
+(defun lithium--already-overriding-map ()
+  "The current global (Emacs) overriding keymap."
+  (and overriding-terminal-local-map
+       (cadr overriding-terminal-local-map)))
 
 (defun lithium--suspend-overriding-map ()
   "Suspend the current overriding map."
   (when lithium-promoted-map
-    (lithium--remove-overriding-map lithium-promoted-map)
-    (setq lithium-promoted-map nil)))
+    (lithium--remove-overriding-map lithium-promoted-map)))
 
 (defun lithium--suspend-overriding-map-advice (_keymap symbol &rest _)
   "Advise suspending a lithium map if another wants to override.
@@ -249,18 +251,33 @@ invocations."
   (let ((map-to-promote
          (cond ((minibufferp) ; do not promote any map in the minibuffer
                 nil)
-               ;; if there is already an overriding map (presumably, a
+               ;; If there is already an overriding map (typically, a
                ;; foreign map, like Hydra or Transient), then do
                ;; nothing. We do not want to assume overriding status
                ;; in this case, as it could lead to undefined behavior.
-               ((lithium--overriding-map-p) nil)
+               ((lithium--already-overriding-map)
+                ;; But in rare cases (e.g., entering an edebug
+                ;; session), our local tracking of the overriding map
+                ;; could go out of sync with its actual state. It
+                ;; appears that even though we suspend the map and
+                ;; check that it's suspended locally, Emacs still
+                ;; reinstates it after emerging from the edebug
+                ;; session. As a result, we lose any record of that
+                ;; promoted map and no longer control it.
+                ;; To recover in this case, we check here if the
+                ;; current lithium mode map happens to be the one
+                ;; already promoted, and reintegrate it into our
+                ;; records.
+                (when (and (lithium-current-mode)
+                           (eq (lithium-mode-metadata-map (lithium-current-mode))
+                               (lithium--already-overriding-map)))
+                  (lithium--already-overriding-map)))
                ((lithium-current-mode)
                 (lithium-mode-metadata-map (lithium-current-mode)))
                ;; take no action otherwise
                (t nil))))
     (when map-to-promote
-      (lithium--set-overriding-map map-to-promote)
-      (setq lithium-promoted-map map-to-promote))))
+      (lithium--set-overriding-map map-to-promote))))
 
 (defmacro lithium-define-mode (name
                                docstring
