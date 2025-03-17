@@ -83,6 +83,45 @@ which one it is so that we can demote it before promoting another.")
     user-error)
   "Error signals that are known to be part of normal Emacs operation.")
 
+(defun lithium--handle-key (mode action pre-exit post-exit should-exit)
+  "Handle a key for MODE.
+
+Execute ACTION. If the key SHOULD-EXIT, or if an unhandled error is
+encountered, exit MODE, invoking PRE-EXIT and POST-EXIT hooks at the
+appropriate times."
+  (if should-exit
+      ;; exit first so that the modal UI doesn't get
+      ;; in the way of whatever this command is
+      ;; TODO: now that modes are "globalized" and explicitly
+      ;; disabled in the minibuffer, can we just exit after
+      ;; running the command?
+      (progn (run-hooks pre-exit)
+             (funcall mode -1)
+             ;; if we interrupt execution via `C-g', or if the
+             ;; command encounters an error during execution,
+             ;; we still want to run post-exit hooks to ensure
+             ;; that we leave things in a clean state
+             (unwind-protect
+                 ;; do the action
+                 (call-interactively action)
+               ;; run post-exit hook "intrinsically"
+               (run-hooks post-exit)))
+    (condition-case err
+        (call-interactively action)
+      ;; if we interrupt execution via `C-g', that's fine.
+      ;; but if the command encounters an error during execution,
+      ;; we quit the mode to be on the safe side, and also
+      ;; run exit hooks
+      (error
+       (let ((conditions (get (car err) 'error-conditions)))
+         ;; ignore "mundane" errors
+         (unless (member (car conditions) lithium-mundane-errors)
+           (run-hooks pre-exit)
+           (funcall mode -1)
+           (run-hooks post-exit))
+         ;; re-raise the interrupt
+         (signal (car err) (cdr err)))))))
+
 ;; TODO: should we define a mode struct that is passed around internally,
 ;; instead of interning global symbol names to discover hooks?
 (defun lithium--define-key (keyspec keymap mode)
@@ -110,46 +149,15 @@ and set to true, then also exit the MODE after performing the action."
         (post-exit (intern
                     (concat (symbol-name mode)
                             "-post-exit-hook"))))
-    (if should-exit
-        (define-key keymap
-          (kbd key)
-          (lambda ()
-            (interactive)
-            ;; exit first so that the modal UI doesn't get
-            ;; in the way of whatever this command is
-            ;; TODO: now that modes are "globalized" and explicitly
-            ;; disabled in the minibuffer, can we just exit after
-            ;; running the command?
-            (run-hooks pre-exit)
-            (funcall mode -1)
-            ;; if we interrupt execution via `C-g', or if the
-            ;; command encounters an error during execution,
-            ;; we still want to run post-exit hooks to ensure
-            ;; that we leave things in a clean state
-            (unwind-protect
-                ;; do the action
-                (call-interactively action)
-              ;; run post-exit hook "intrinsically"
-              (run-hooks post-exit))))
-      (define-key keymap
-        (kbd key)
-        (lambda ()
-          (interactive)
-          (condition-case err
-              (call-interactively action)
-            ;; if we interrupt execution via `C-g', that's fine.
-            ;; but if the command encounters an error during execution,
-            ;; we quit the mode to be on the safe side, and also
-            ;; run exit hooks
-            (error
-             (let ((conditions (get (car err) 'error-conditions)))
-               ;; ignore "mundane" errors
-               (unless (member (car conditions) lithium-mundane-errors)
-                 (run-hooks pre-exit)
-                 (funcall mode -1)
-                 (run-hooks post-exit))
-               ;; re-raise the interrupt
-               (signal (car err) (cdr err))))))))))
+    (define-key keymap
+                (kbd key)
+                (lambda ()
+                  (interactive)
+                  (lithium--handle-key mode
+                                       action
+                                       pre-exit
+                                       post-exit
+                                       should-exit)))))
 
 (defmacro lithium-define-key (mode key fn &optional exit)
   "Bind KEY to FN in MODE.
