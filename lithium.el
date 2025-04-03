@@ -86,7 +86,7 @@ which one it is so that we can demote it before promoting another.")
 (defun lithium--handle-key (mode action pre-exit post-exit should-exit)
   "Handle a key for MODE.
 
-Execute ACTION. If the key SHOULD-EXIT, or if an unhandled error is
+Execute ACTION.  If the key SHOULD-EXIT, or if an unhandled error is
 encountered, exit MODE, invoking PRE-EXIT and POST-EXIT hooks at the
 appropriate times."
   (if should-exit
