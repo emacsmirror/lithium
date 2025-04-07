@@ -168,10 +168,11 @@ performing the action."
                                       ,should-exit))))
 
 (defun lithium--define-key-from-spec (mode spec)
+  "A helper to rewrite a keybinding SPEC into lithium keybinding for MODE."
   `(lithium-define-key ,mode ,@spec))
 
 (defmacro lithium-define-keys (mode keyspec)
-  "Bind keybindings in SPEC in MODE."
+  "Bind keybindings in KEYSPEC in MODE."
   `(progn
      ,@(mapcar (apply-partially #'lithium--define-key-from-spec mode) keyspec)))
 
