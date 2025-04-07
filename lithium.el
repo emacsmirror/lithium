@@ -105,13 +105,17 @@ appropriate times."
          ;; that we leave things in a clean state
          (unwind-protect
              ;; do the action
-             (call-interactively #',action)
+             (progn
+               (setq this-command #',action)
+               (call-interactively #',action))
            ;; run post-exit hook "intrinsically"
            (run-hooks ',post-exit)))
     `(lambda ()
        (interactive)
        (condition-case err
-           (call-interactively #',action)
+           (progn
+             (setq this-command #',action)
+             (call-interactively #',action))
          ;; if we interrupt execution via `C-g', that's fine.
          ;; but if the command encounters an error during execution,
          ;; we quit the mode to be on the safe side, and also
