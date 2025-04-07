@@ -90,26 +90,33 @@ Execute ACTION.  If the key SHOULD-EXIT, or if an unhandled error is
 encountered, exit MODE, invoking PRE-EXIT and POST-EXIT hooks at the
 appropriate times."
   (if should-exit
-      ;; exit first so that the modal UI doesn't get
-      ;; in the way of whatever this command is
-      ;; TODO: now that modes are "globalized" and explicitly
-      ;; disabled in the minibuffer, can we just exit after
-      ;; running the command?
       `(lambda ()
          (interactive)
          (run-hooks ',pre-exit)
-         (funcall #',mode -1)
          ;; if we interrupt execution via `C-g', or if the
          ;; command encounters an error during execution,
          ;; we still want to run post-exit hooks to ensure
          ;; that we leave things in a clean state
          (unwind-protect
              ;; do the action
+             ;; TODO: we could also consider suspending the overriding
+             ;; map before running the command, and then evaluating it
+             ;; (reinstating it) afterwards, both here and for
+             ;; non-exiting commands, below. It would be ideal to wait
+             ;; until we have an actual issue that demonstrates a
+             ;; problem before making this change, however, as it does
+             ;; add a little complexity.
              (progn
                (setq this-command #',action)
                (call-interactively #',action))
-           ;; run post-exit hook "intrinsically"
-           (run-hooks ',post-exit)))
+           ;; As this is an exiting key, exit the mode.
+           ;; It's possible that the `action' could itself already
+           ;; have exited the mode, so we first check whether the mode
+           ;; is active before attempting to exit.
+           (when ,mode
+             (funcall #',mode -1)
+             ;; run post-exit hook "intrinsically"
+             (run-hooks ',post-exit))))
     `(lambda ()
        (interactive)
        (condition-case err
