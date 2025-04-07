@@ -1,4 +1,4 @@
-.. image:: https://github.com/countvajhula/lithium/actions/workflows/melpazoid.yml/badge.svg
+.. image:: https://github.com/countvajhula/lithium/actions/workflows/test.yml/badge.svg
     :target: https://github.com/countvajhula/lithium/actions
 
 lithium
