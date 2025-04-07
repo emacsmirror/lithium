@@ -35,13 +35,13 @@ You can use Lithium to define a mode (similar to an Emacs minor mode, or an Evil
      ("j" next-line)
      ("k" previous-line)
      ("l" forward-char)
-     ("q" (lambda () (interactive) (message "Bye!")) t))
+     ("q" (lambda () (interactive) (message "Bye!")) :exit))
     :lighter " demo"
     :group 'lithium-demo)
 
   (global-set-key (kbd "C-c l") #'my-special-mode-enter)
 
-Then, ``C-c l`` enters the mode, ``q`` exits it. You can also exit a Lithium mode at any time by invoking a dedicated "exit" function for the mode. In this case, that's ``M-x my-special-mode-exit``.
+Then, ``C-c l`` enters the mode, ``q`` exits it. Any key that's marked with ``:exit`` will exit the mode after performing the action. You can also exit a Lithium mode at any time by invoking a dedicated "exit" function for the mode. In this case, that's ``M-x my-special-mode-exit``.
 
 As Lithium modes are built on top of ordinary Emacs minor modes, you can override keybindings by simply defining keys in the corresponding minor mode map. But Lithium also provides some convenient utilities for the purpose:
 
@@ -63,7 +63,7 @@ Global modes, and their keybindings, are active in all buffers. They are not act
     "My global mode."
     (("h" previous-buffer)
      ("l" next-buffer)
-     ("q" (lambda () (interactive) (message "Bye!")) t))
+     ("q" (lambda () (interactive) (message "Bye!")) :exit))
     :lighter " demo"
     :group 'lithium-demo)
 
@@ -85,7 +85,7 @@ Entering a second mode (either local or global) while the first is still active 
      ("j" next-line)
      ("k" previous-line)
      ("l" forward-sentence)
-     ("q" (lambda () (interactive) (message "Bye!")) t))
+     ("q" (lambda () (interactive) (message "Bye!")) :exit))
     :lighter " demo"
     :group 'lithium-demo)
 
