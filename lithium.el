@@ -83,7 +83,7 @@ which one it is so that we can demote it before promoting another.")
     user-error)
   "Error signals that are known to be part of normal Emacs operation.")
 
-(defun lithium--handle-key (mode action pre-exit post-exit should-exit)
+(defmacro lithium--handle-key (mode action pre-exit post-exit should-exit)
   "Handle a key for MODE.
 
 Execute ACTION.  If the key SHOULD-EXIT, or if an unhandled error is
@@ -95,103 +95,74 @@ appropriate times."
       ;; TODO: now that modes are "globalized" and explicitly
       ;; disabled in the minibuffer, can we just exit after
       ;; running the command?
-      (progn (run-hooks pre-exit)
-             (funcall mode -1)
-             ;; if we interrupt execution via `C-g', or if the
-             ;; command encounters an error during execution,
-             ;; we still want to run post-exit hooks to ensure
-             ;; that we leave things in a clean state
-             (unwind-protect
-                 ;; do the action
-                 (call-interactively action)
-               ;; run post-exit hook "intrinsically"
-               (run-hooks post-exit)))
-    (condition-case err
-        (call-interactively action)
-      ;; if we interrupt execution via `C-g', that's fine.
-      ;; but if the command encounters an error during execution,
-      ;; we quit the mode to be on the safe side, and also
-      ;; run exit hooks
-      (error
-       (let ((conditions (get (car err) 'error-conditions)))
-         ;; ignore "mundane" errors
-         (unless (member (car conditions) lithium-mundane-errors)
-           (run-hooks pre-exit)
-           (funcall mode -1)
-           (run-hooks post-exit))
-         ;; re-raise the interrupt
-         (signal (car err) (cdr err)))))))
+      `(lambda ()
+         (interactive)
+         (run-hooks ',pre-exit)
+         (funcall #',mode -1)
+         ;; if we interrupt execution via `C-g', or if the
+         ;; command encounters an error during execution,
+         ;; we still want to run post-exit hooks to ensure
+         ;; that we leave things in a clean state
+         (unwind-protect
+             ;; do the action
+             (call-interactively #',action)
+           ;; run post-exit hook "intrinsically"
+           (run-hooks ',post-exit)))
+    `(lambda ()
+       (interactive)
+       (condition-case err
+           (call-interactively #',action)
+         ;; if we interrupt execution via `C-g', that's fine.
+         ;; but if the command encounters an error during execution,
+         ;; we quit the mode to be on the safe side, and also
+         ;; run exit hooks
+         (error
+          (let ((conditions (get (car err) 'error-conditions)))
+            ;; ignore "mundane" errors
+            (unless (member (car conditions) lithium-mundane-errors)
+              (run-hooks ',pre-exit)
+              (funcall #',mode -1)
+              (run-hooks ',post-exit))
+            ;; re-raise the interrupt
+            (signal (car err) (cdr err))))))))
 
 ;; TODO: should we define a mode struct that is passed around internally,
 ;; instead of interning global symbol names to discover hooks?
-(defun lithium--define-key (keyspec keymap mode)
-  "Helper to define an individual key according to spec.
+(cl-defmacro lithium-define-key (mode key action &optional should-exit)
+  "Bind KEY to FN in MODE.
 
-Sample invocation:
- (lithium--define-key (list \"a\" \\='some-function t)
-                      some-mode-map
-                      \\='some-mode)
+If EXIT is true, exit the mode after running the command.
 
-Parse the KEYSPEC to define the key in KEYMAP for MODE.
-
-KEYSPEC is expected to be (key action [exit]). If `exit' is missing,
-then it's an ordinary binding of key to action, but if exit is present
-and set to true, then also exit the MODE after performing the action."
-  (let ((key (car keyspec))
-        (action (or (cadr keyspec)
-                    (lambda ()
-                      (interactive))))
-        (should-exit (and (> (length keyspec) 2)
-                          (caddr keyspec)))
+If `exit' is missing, then it's an ordinary binding of key to action,
+but if exit is present and set to true, then also exit the MODE after
+performing the action."
+  (let ((keymap (intern
+                 (concat (if (lithium-global-mode-p mode)
+                             "local-"
+                           "")
+                         (symbol-name mode)
+                         "-map")))
         (pre-exit (intern
                    (concat (symbol-name mode)
                            "-pre-exit-hook")))
         (post-exit (intern
                     (concat (symbol-name mode)
                             "-post-exit-hook"))))
-    (define-key keymap
-                (kbd key)
-                (lambda ()
-                  (interactive)
-                  (lithium--handle-key mode
-                                       action
-                                       pre-exit
-                                       post-exit
-                                       should-exit)))))
+    `(define-key ,keymap
+                 (kbd ,key)
+                 (lithium--handle-key ,mode
+                                      ,action
+                                      ,pre-exit
+                                      ,post-exit
+                                      ,should-exit))))
 
-(defmacro lithium-define-key (mode key fn &optional exit)
-  "Bind KEY to FN in MODE.
+(defun lithium--define-key-from-spec (mode spec)
+  `(lithium-define-key ,mode ,@spec))
 
-If EXIT is true, exit the mode after running the command."
-  (let ((keyspec (list key fn (eval exit)))
-        (keymap (intern
-                 (concat (if (lithium-global-mode-p mode)
-                             "local-"
-                           "")
-                         (symbol-name mode)
-                         "-map"))))
-    `(lithium--define-key ',keyspec ,keymap ',mode)))
-
-(defmacro lithium-define-keys (mode spec)
+(defmacro lithium-define-keys (mode keyspec)
   "Bind keybindings in SPEC in MODE."
-  (let ((keymap (intern
-                 (concat
-                  (if (lithium-global-mode-p mode)
-                      "local-"
-                    "")
-                  (symbol-name mode)
-                  "-map"))))
-    `(dolist (keyspec (quote ,spec))
-       (lithium--define-key keyspec ,keymap ',mode))))
-
-(defmacro lithium-keymap (spec mode)
-  "Specify a keymap for the MODE.
-
-SPEC is the set of keybinding specifications."
-  `(let ((keymap (make-sparse-keymap)))
-     (dolist (keyspec (quote ,spec))
-       (lithium--define-key keyspec keymap ,mode))
-     keymap))
+  `(progn
+     ,@(mapcar (apply-partially #'lithium--define-key-from-spec mode) keyspec)))
 
 (defun lithium--set-overriding-map (keymap)
   "Make the KEYMAP take precedence over all other keymaps.
@@ -315,7 +286,7 @@ is parsed and then forwarded, as well."
 
        (define-minor-mode ,local-name
          ,docstring
-         :keymap (lithium-keymap ,keymap-spec ',name)
+         :keymap (make-sparse-keymap)
 
          (if ,local-name
              ;; push the mode onto the local mode stack
@@ -325,7 +296,8 @@ is parsed and then forwarded, as well."
               (make-lithium-mode-metadata :name ',name
                                           :map ,keymap))
            (lithium-pop-mode ',name))
-         ,@body))))
+         ,@body)
+       (lithium-define-keys ,name ,keymap-spec))))
 
 (defmacro lithium-define-global-mode (name
                                       docstring
@@ -370,6 +342,16 @@ repo if you have a specific opinion about this!)."
         (enter-mode (intern
                      (concat (symbol-name name)
                              "-enter"))))
+    ;; Mark this mode as a global mode for the internal purposes of
+    ;; determining the appropriate keymap to use in
+    ;; `lithium-define-mode'. We do this even before the mode is
+    ;; defined, as `lithium-define-mode' is called as part of mode
+    ;; definition below.
+    ;; As symbol properties set during macroexpansion seem to persist
+    ;; to runtime, this property could also be used to support an
+    ;; application-level predicate (i.e., `lithium-global-mode-p')
+    (put name 'lithium-global t)
+
     `(progn
 
        (defvar ,pre-entry nil
@@ -417,11 +399,7 @@ repo if you have a specific opinion about this!)."
        (defun ,exit-mode ()
          "Exit mode."
          (interactive)
-         (lithium-exit-mode ',name))
-
-       ;; mark this mode as a global mode
-       ;; for use in application-level predicates
-       (put ',name 'lithium-global t))))
+         (lithium-exit-mode ',name)))))
 
 (defmacro lithium-define-local-mode (name
                                      docstring
@@ -482,11 +460,7 @@ DOCSTRING, KEYMAP-SPEC and BODY are forwarded to
        (defun ,exit-mode ()
          "Exit mode."
          (interactive)
-         (lithium-exit-mode ',name))
-
-       ;; mark this mode as a local mode - not technically needed
-       ;; since properties default to nil, but for good measure
-       (put ',name 'lithium-global nil))))
+         (lithium-exit-mode ',name)))))
 
 (defun lithium-global-mode-p (mode)
   "Is MODE a global mode?"
