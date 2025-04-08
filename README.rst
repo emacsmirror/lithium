@@ -96,7 +96,7 @@ Now, ``C-c l`` followed by ``C-c d`` results in second mode being on top. Quitti
 You could even stack all three of these defined modes, in any order. Note that exiting a global mode in any buffer exits it in *all* buffers, whether it happens to be on top of the local stack in that buffer or not. The stack of modes is otherwise preserved.
 
 Lifecycle Hooks
----------------
+===============
 
 Lithium provides hooks for every stage of the mode lifecycle:
 
@@ -107,6 +107,10 @@ Lithium provides hooks for every stage of the mode lifecycle:
 
 Defining a mode named ``my-mode`` creates hooks named ``my-mode-pre-entry-hook`` ``my-mode-post-entry-hook``, ``my-mode-pre-exit-hook`` and ``my-mode-post-exit-hook`` to which you can attach functionality in the usual way for Emacs hooks.
 
+The pre-entry hook is called before activating the mode. Post-entry is called after activating the mode. Pre-exit is called before exiting the mode. Post-exit is called after exiting the mode. If you are exiting the mode via an "exiting" command, then pre-exit is called *before* running the command, the command is run, the mode is exited, and then post-exit is called. If the exiting command itself happens to exit the mode as part of its operation, then the post-exit hook will be called as part of command execution as you would expect, and will not be called again, separately, as it would if the command did not itself exit the mode.
+
+This behavior is intended to provide clear formal semantics for mode transitions which can underlie extensions you or others may choose to layer on top of your mode.
+
 "Modes" or "States"?
 ====================
 
@@ -116,7 +120,13 @@ Lithium modes *are* Emacs minor modes, specialized to a certain kind of user exp
 
 A big benefit of this is that you can use ordinary minor mode controls, infrastructure, and customizations to work with Lithium modes. For example, you can toggle the mode, and check its value, using the ordinary minor mode bindings. And if you write a global Lithium mode that you'd like to provide as a library, you may find it beneficial to define autoloads for the mode, in the same way as you would for ordinary global minor modes, for any customizations associated with your mode to become available via ``M-x customize``.
 
+Customization
+=============
+
 Typically, if there are Lithium interfaces available that wrap the underlying minor mode bindings, it would generally be advisable to use those. For example, `lithium-define-key` wraps the usual `define-key`. Even though you could use the latter to define bindings in a lithium mode, you should use the former because it implicitly does the necessary error handling to ensure that the mode is dismissed in case of an unhandled error, ensures that lifecycle hooks are triggered at the right times in the case of "exiting" keys to preserve formal modal expectations, and so on.
+
+Keymap Precedence
+=================
 
 Unlike ordinary minor modes, Lithium modes have a very high keymap precedence. This fits the most common usage of Lithium modes where keys are expected to override all other bindings. If you have a use case that you feel warrants a different style with lower-priority keybindings, please start a discussion on it by submitting an issue.
 
@@ -124,4 +134,3 @@ Non-Ownership
 =============
 
 This work is not owned by anyone. Please see the `Declaration of Non-Ownership <https://github.com/drym-org/foundation/blob/main/Declaration_of_Non_Ownership.md>`_.
-
