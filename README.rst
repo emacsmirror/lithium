@@ -6,7 +6,7 @@ lithium
 
 Lightweight modal [1]_ interfaces.
 
-Lithium allows you to define Vim-like modes using Emacs's minor mode infrastructure. Modes may either be local to a buffer or global across all of Emacs. In either case, keybindings defined by the mode take precedence over other keybindings while the mode is enabled. Modes may remain enabled while working in the Minibuffer, so that it's possible to perform standard Emacs operations such as executing an ``M-x`` command, saving the buffer, viewing completion menus -- without affecting or being affected by the active mode.
+Lithium allows you to define Vim-like modes using Emacs's minor mode infrastructure. Modes may either be local to a buffer or global across all of Emacs. In either case, keybindings defined by the mode take precedence over other keybindings while the mode is enabled. Modes do not interfere with the Minibuffer, so that it's possible to perform standard Emacs operations such as executing an ``M-x`` command, saving the buffer, viewing completion menus -- without affecting or being affected by the active mode.
 
 Modes also define comprehensive lifecycle hooks so that custom behavior may be attached to mode pre-entry, post-entry, pre-exit, and post-exit.
 
