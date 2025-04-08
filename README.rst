@@ -123,7 +123,7 @@ A big benefit of this is that you can use ordinary minor mode controls, infrastr
 Customization
 =============
 
-Typically, if there are Lithium interfaces available that wrap the underlying minor mode bindings, it would generally be advisable to use those. For example, `lithium-define-key` wraps the usual `define-key`. Even though you could use the latter to define bindings in a lithium mode, you should use the former because it implicitly does the necessary error handling to ensure that the mode is dismissed in case of an unhandled error, ensures that lifecycle hooks are triggered at the right times in the case of "exiting" keys to preserve formal modal expectations, and so on.
+Typically, if there are Lithium interfaces available that wrap the underlying minor mode bindings, it would generally be advisable to use those. For example, ``lithium-define-key`` wraps the usual ``define-key``. Even though you could use the latter to define bindings in a lithium mode, you should use the former because it implicitly does the necessary error handling to ensure that the mode is dismissed in case of an unhandled error, ensures that lifecycle hooks are triggered at the right times in the case of "exiting" keys to preserve formal modal expectations, and so on.
 
 Keymap Precedence
 =================
