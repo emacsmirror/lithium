@@ -107,6 +107,19 @@ Lithium provides hooks for every stage of the mode lifecycle:
 
 Defining a mode named ``my-mode`` creates hooks named ``my-mode-pre-entry-hook`` ``my-mode-post-entry-hook``, ``my-mode-pre-exit-hook`` and ``my-mode-post-exit-hook`` to which you can attach functionality in the usual way for Emacs hooks.
 
+"Modes" or "States"?
+====================
+
+Lithium is a modal interface toolkit partially inspired by Vim. But Vim's notion of a "mode" is different from Emacs's notion of a mode, which historically has led to some awkwardness, typically resolved by referring to Vim-style "modes" as "states" instead (as in Evil).
+
+Lithium modes *are* Emacs minor modes, specialized to a certain kind of user experience resembling Vim's notion of a mode. Thus, Lithium modes are "modes" in both the Emacs and Vim senses!
+
+A big benefit of this is that you can use ordinary minor mode controls, infrastructure, and customizations to work with Lithium modes. For example, you can toggle the mode, and check its value, using the ordinary minor mode bindings. And if you write a global Lithium mode that you'd like to provide as a library, you may find it beneficial to define autoloads for the mode, in the same way as you would for ordinary global minor modes, for any customizations associated with your mode to become available via ``M-x customize``.
+
+Typically, if there are Lithium interfaces available that wrap the underlying minor mode bindings, it would generally be advisable to use those. For example, `lithium-define-key` wraps the usual `define-key`. Even though you could use the latter to define bindings in a lithium mode, you should use the former because it implicitly does the necessary error handling to ensure that the mode is dismissed in case of an unhandled error, ensures that lifecycle hooks are triggered at the right times in the case of "exiting" keys to preserve formal modal expectations, and so on.
+
+Unlike ordinary minor modes, Lithium modes have a very high keymap precedence. This fits the most common usage of Lithium modes where keys are expected to override all other bindings. If you have a use case that you feel warrants a different style with lower-priority keybindings, please start a discussion on it by submitting an issue.
+
 Non-Ownership
 =============
 
