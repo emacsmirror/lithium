@@ -2,7 +2,7 @@
 
 ;; Author: Siddhartha Kasivajhula <sid@countvajhula.com>
 ;; URL: https://github.com/countvajhula/lithium
-;; Version: 0.0
+;; Version: 0.1
 ;; Package-Requires: ((emacs "25.1"))
 ;; Keywords: convenience, emulations, lisp, tools
 
