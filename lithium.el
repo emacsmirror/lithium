@@ -92,7 +92,6 @@ appropriate times."
   (if should-exit
       `(lambda ()
          (interactive)
-         (run-hooks ',pre-exit)
          ;; if we interrupt execution via `C-g', or if the
          ;; command encounters an error during execution,
          ;; we still want to run post-exit hooks to ensure
@@ -114,6 +113,7 @@ appropriate times."
            ;; have exited the mode, so we first check whether the mode
            ;; is active before attempting to exit.
            (when ,mode
+             (run-hooks ',pre-exit)
              (funcall #',mode -1)
              ;; run post-exit hook "intrinsically"
              (run-hooks ',post-exit))))
