@@ -112,11 +112,7 @@ appropriate times."
            ;; It's possible that the `action' could itself already
            ;; have exited the mode, so we first check whether the mode
            ;; is active before attempting to exit.
-           (when ,mode
-             (run-hooks ',pre-exit)
-             (funcall #',mode -1)
-             ;; run post-exit hook "intrinsically"
-             (run-hooks ',post-exit))))
+           (lithium-exit-mode ',mode)))
     `(lambda ()
        (interactive)
        (condition-case err
