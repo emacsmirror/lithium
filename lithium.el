@@ -143,6 +143,7 @@ If EXIT is true, exit the mode after running the command.
 If `exit' is missing, then it's an ordinary binding of key to action,
 but if exit is present and set to true, then also exit the MODE after
 performing the action."
+  (declare (indent 1))
   (let ((keymap (intern
                  (concat (if (lithium-global-mode-p mode)
                              "local-"
@@ -169,6 +170,7 @@ performing the action."
 
 (defmacro lithium-define-keys (mode keyspec)
   "Bind keybindings in KEYSPEC in MODE."
+  (declare (indent 1))
   `(progn
      ,@(mapcar (apply-partially #'lithium--define-key-from-spec mode) keyspec)))
 
