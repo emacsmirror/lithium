@@ -52,6 +52,8 @@ As Lithium modes are built on top of ordinary Emacs minor modes, you can overrid
                         ("l" forward-word)
                         ("a" (lambda () (interactive) (message "Poke!")))))
 
+Although Lithium modes are built on top of Emacs minor modes, it is important to use Lithium modes via Lithium interfaces rather than the minor mode interfaces, in order to take advantage of the modal lifecycle guarantees provided by Lithium. For instance, you can enter the above Lithium mode using ``(my-special-mode 1)``, but this would not trigger the ``pre-entry`` hook guaranteed by Lithium. So it's better to use ``my-special-mode-enter`` and ``my-special-mode-exit``. Also in this connection, see the discussion below on Lithium hooks.
+
 Global and Local Modes
 ----------------------
 
@@ -107,9 +109,11 @@ Lithium provides hooks for every stage of the mode lifecycle:
 
 Defining a mode named ``my-mode`` creates hooks named ``my-mode-pre-entry-hook`` ``my-mode-post-entry-hook``, ``my-mode-pre-exit-hook`` and ``my-mode-post-exit-hook`` to which you can attach functionality in the usual way for Emacs hooks.
 
-The ``pre-entry`` hook is called before activating the mode. ``post-entry`` is called after activating the mode. ``pre-exit`` is called before exiting the mode. ``post-exit`` is called after exiting the mode. If you are exiting the mode via an "exiting" command, then ``pre-exit`` is called *before* running the command, the command is run, the mode is exited, and then ``post-exit`` is called. If the exiting command itself happens to exit the mode as part of its operation, then the ``post-exit`` hook will be called as part of command execution as you would expect, and will not be called again, separately, as it would if the command did not itself exit the mode.
+The ``pre-entry`` hook is called before activating the mode. ``post-entry`` is called after activating the mode. ``pre-exit`` is called before exiting the mode. ``post-exit`` is called after exiting the mode. If you are exiting the mode via an "exiting" command, then ``pre-exit`` is called *after* running the command, then the mode is exited, and then ``post-exit`` is called. If the exiting command itself happens to exit the mode as part of its operation, then the ``post-exit`` hook will be called as part of command execution as you would expect, and will not be called again, separately, as it would if the command did not itself exit the mode.
 
 This behavior is intended to provide clear formal semantics for mode transitions which can underlie extensions you or others may choose to layer on top of your mode.
+
+Note that Emacs minor modes (which Lithium modes are built on top of) come with hooks, for instance, in this case, ``my-mode-hook``. But does this hook trigger before entry, after entry, before exit, or after exit, or perhaps, in more than one of these cases? We don't know without looking up docs. Instead, to layer functionality on top of the modal lifecycle in a formal way, it's better to be explicit and rely on one of the four lifecycle hooks provided by Lithium.
 
 "Modes" or "States"?
 ====================
