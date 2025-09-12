@@ -8,7 +8,6 @@ SHELL=/bin/bash
 DOCS-PATH=doc
 
 EMACS=emacs
-CASK ?= cask
 
 export CI_PACKAGES=lithium
 
