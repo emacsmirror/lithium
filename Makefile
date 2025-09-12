@@ -5,47 +5,49 @@ THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
 SHELL=/bin/bash
 
-PACKAGE-NAME=lithium
 DOCS-PATH=doc
 
 EMACS=emacs
 CASK ?= cask
 
-PROJECT_FILES=`${CASK} files`
+export CI_PACKAGES=lithium
 
 help:
+	@echo "Run common development actions."
+	@echo
+	@echo "    Usage: make <target>"
+	@echo "    where <target> is one of:"
+	@echo
+	@echo "help - show this menu"
 	@echo "clean - remove all build artifacts"
-	@echo "install - install package dependencies in .cask/"
-	@echo "lint - check style with package-lint"
-	@echo "lint+less - lint piped to less"
-	@echo "lint-no-noise - lint with typically noisy warnings filtered out"
-	@echo "lint-noiseless - lint-no-noise piped to less"
-	@echo "checkdoc - check docstrings"
+	@echo "setup-ci - clone emacs-ci to run project CI actions such as linting"
+	@echo "bootstrap - install Straight.el"
+	@echo "install - install package dependencies"
 	@echo "build - byte compile the package"
-	@echo "test - run tests"
+	@echo "lint - check style with package-lint"
+	@echo "checkdoc - check docstrings"
+	@echo
+	@echo "**All of these actions take effect and are contained inside the emacs-ci/ folder --- they do not affect the system Emacs configuration.**"
 
-clean :
-	${CASK} clean-elc
+setup-ci:
+	git clone https://github.com/countvajhula/emacs-ci.git
+
+clean:
+	cd emacs-ci && rm -rf ci-init
+
+bootstrap:
+	cd emacs-ci && emacs --batch --quick --load bootstrap.el
 
 install:
-	${CASK} install
+	cd emacs-ci && emacs --batch --quick --load install.el
+
+build:
+	cd emacs-ci && emacs --batch --quick --load build.el
 
 lint:
-	${CASK} exec $(EMACS) -Q --batch  \
-	                      -l "package-lint.el"  \
-	                      --eval "(setq package-lint-main-file \"lithium.el\")" \
-	                      -f "package-lint-batch-and-exit"  \
-	                      ${PROJECT_FILES}
+	cd emacs-ci && emacs --batch --quick --load lint.el
 
 checkdoc:
-	${CASK} exec $(EMACS) -Q --batch  \
-	                      -l "dev/build-utils.el"  \
-	                      --eval '(flycheck/batch-checkdoc ".")'
+	cd emacs-ci && emacs --batch --quick --load checkdoc.el
 
-build :
-	${CASK} build
-
-test: build
-	${CASK} exec ert-runner
-
-.PHONY:	help lint checkdoc build clean install test
+.PHONY: help setup-ci clean bootstrap install build lint checkdoc
