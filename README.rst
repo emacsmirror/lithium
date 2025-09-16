@@ -19,6 +19,14 @@ Installation
 
 Lithium is on `MELPA <https://melpa.org/>`_, so you can install it in the usual way using your package manager of choice (e.g., `Straight.el <https://github.com/radian-software/straight.el>`_, `Elpaca <https://github.com/progfolio/elpaca>`_, or Emacs's built-in package.el), after ensuring you have MELPA in your configured list of package archives.
 
+In order for defined Lithium modes to operate seamlessly within Emacs (e.g., to ensure that keymaps are not active in the minibuffer), you'll need to enable ``lithium-mode``. If you have Lithium in your init config, that might resemble:
+
+.. code-block:: elisp
+
+  (use-package lithium
+    :config
+    (lithium-mode 1))
+
 Usage
 =====
 
