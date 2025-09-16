@@ -5,5 +5,7 @@
 # Build
 .cask
 *.elc
+*.html
 dist
-emacs-ci
+.emacs-ci.clone
+coverage
